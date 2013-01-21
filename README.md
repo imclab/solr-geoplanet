@@ -1,3 +1,17 @@
+solr-geoplanet
+==
+
+**IF YOU ARE READING THIS THEN THAT MEANS YOU ARE LOOKING AT A BRANCH THAT IS
+  BEING ACTIVELY DEVELOPED. YOU PROBABLY DON'T WANT TO BE HERE.**
+
+See also
+--
+
+* http://archive.org/search.php?query=subject%3A%22geoplanet%22
+
+The old README
+--
+
 # The long version: http://www.aaronland.info/weblog/2009/12/21/redacted/#woelr
 
 --
