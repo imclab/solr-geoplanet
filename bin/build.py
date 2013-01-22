@@ -13,7 +13,9 @@ import logging
 
 class woedb:
 
-    def __init__ (self,):
+    def __init__ (self, opts):
+
+        self.opts = opts
 
         self.solr = pysolr.Solr('http://localhost:8983/solr/woedb')
         self.version = None
@@ -105,7 +107,7 @@ class woedb:
             woeid = row['WOE_ID']
             prev = new.get('woeid')
 
-            print "%s -> %s" % (woeid, prev)
+            # print "%s -> %s" % (woeid, prev)
 
             alias_k = "alias_%s_%s" % (row['Language'], row['Name_Type'])
             alias_v = row['Name']
@@ -158,6 +160,10 @@ class woedb:
 
         rsp = self.solr.search(q=query)
 
+        # TO DO: check version between old and new
+        # if new > old then do not merge; new trumps
+        # all ... I think (20130122/straup)
+
         if rsp.hits:
             old = rsp.docs[0]
             del(old['date_indexed'])
@@ -171,5 +177,7 @@ if __name__ == '__main__':
 
     path = sys.argv[1]
 
-    w = woedb()
+    opts = None
+
+    w = woedb(opts)
     w.parse_zipfile(path)
