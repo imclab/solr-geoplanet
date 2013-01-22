@@ -11,76 +11,72 @@ import re
 import os.path
 import logging
 
-def parse_zipfile(path):
+class woedb:
 
-    pattern = re.compile("geoplanet_data_([\d\.]+)\.zip$")
-    match = pattern.match(os.path.basename(path))
+    def __init__ (self,):
 
-    if not match:
-        logging.error("failed to match version number!")
-        return False
+        self.solr = pysolr.Solr('http://localhost:8983/solr/woedb')
+        self.version = None
+        self.zf = None
 
-    groups = match.groups()
-    version = groups[0]
+    def parse_zipfile(self, path):
 
-    places = 'geoplanet_places_%s.tsv' % version
-    aliases = 'geoplanet_aliases_%s.tsv' % version
-    adjacencies = 'geoplanet_adjacencies_%s.tsv' % version
-    changes = 'geoplanet_changes_%s.tsv' % version
+        pattern = re.compile("geoplanet_data_([\d\.]+)\.zip$")
+        match = pattern.match(os.path.basename(path))
+
+        if not match:
+            logging.error("failed to match version number!")
+            return False
+
+        groups = match.groups()
+        self.version = groups[0]
+
+        places = 'geoplanet_places_%s.tsv' % self.version
+        aliases = 'geoplanet_aliases_%s.tsv' % self.version
+        adjacencies = 'geoplanet_adjacencies_%s.tsv' % self.version
+        changes = 'geoplanet_changes_%s.tsv' % self.version
     
-    zf = zipfile.ZipFile(path)
+        self.zf = zipfile.ZipFile(path)
 
-    file_list = []
+        file_list = []
 
-    for i in zf.infolist():
-        file_list.append(i.filename)
+        for i in self.zf.infolist():
+            file_list.append(i.filename)
 
-    if not places in file_list:
-        logging.error("Missing %s" % places)
-        return False
+        if not places in file_list:
+            logging.error("Missing %s" % places)
+            return False
 
-    parse_places(zf, places, version)
+        self.parse_places(places)
 
-    parse_aliases(zf, aliases, version)
+        self.parse_aliases(aliases)
 
-    parse_adjacencies(zf, adjacencies, version)
+        self.parse_adjacencies(adjacencies)
 
-    if changes in file_list:
-        # apply changes...
-        pass
+        if changes in file_list:
+            # apply changes...
+            pass
 
-def parse_places(zf, fname, version):
+    def parse_places(self, fname):
 
-    # hack - make me a global or ... ?
+        logging.debug("parse places %s" % fname)
+        return
 
-    solr = pysolr.Solr('http://localhost:8983/solr/woedb')
+        reader = self.zf_reader(fname)
+        docs = []
 
-    fh = zf.open(fname)
-    reader = unicodecsv.UnicodeReader(fh, delimiter='\t')
+        for row in reader:
 
-    docs = []
+            new = {
+                'woeid': row['WOE_ID'],
+                'parent_woeid': row['Parent_ID'],
+                'name': row['Name'],
+                'placetype': row['PlaceType'],
+                'lang' : row['Language'],
+                'iso': row['ISO'],
+                }
 
-    for row in reader:
-
-        new = {
-            'woeid': row['WOE_ID'],
-            'parent_woeid': row['Parent_ID'],
-            'name': row['Name'],
-            'placetype': row['PlaceType'],
-            'lang' : row['Language'],
-            'iso': row['ISO'],
-            'provider': 'geoplanet %s' % version,
-            }
-
-        query = "woeid:%s" % row['WOE_ID']
-
-        rsp = solr.search(q=query)
-
-        if rsp.hits:
-            old = rsp.docs[0]
-            del(old['date_indexed'])
-
-            new = dict(old.items() + new.items())
+            new = self.foo(new)
 
         docs.append(new)
 
@@ -88,32 +84,92 @@ def parse_places(zf, fname, version):
             solr.add(docs)
             docs = []
 
-    if len(docs) == 1000:
-        solr.add(docs)
+        if len(docs) == 1000:
+            solr.add(docs)
 
-def parse_adjacencies(zf, fname, version):
+    def parse_adjacencies(zf, fname, version):
 
-    return 
+        logging.debug("parse adjacencies %s" % fname)
+        return 
 
-    fh = zf.open(fname)
-    reader = unicodecsv.UnicodeReader(fh, delimiter='\t')
+    def parse_aliases(self, fname):
 
-    for row in reader:
-        print row
+        logging.debug("parse aliases %s" % fname)
 
-def parse_aliases(zf, fname, version):
+        reader = self.zf_reader(fname)
+        docs = []
+        new = {}
 
-    return
+        for row in reader:
 
-    fh = zf.open(fname)
-    reader = unicodecsv.UnicodeReader(fh, delimiter='\t')
+            woeid = row['WOE_ID']
+            prev = new.get('woeid')
 
-    for row in reader:
-        print row
+            print "%s -> %s" % (woeid, prev)
 
+            alias_k = "alias_%s_%s" % (row['Language'], row['Name_Type'])
+            alias_v = row['Name']
+
+            if prev and prev != woeid:
+
+                new = self.foo(new)
+                docs.append(new)
+
+                new = {}
+
+                if len(docs) == 10000:
+                    print "ADD docs"
+                    self.solr.add(docs)
+                    docs = []
+
+            #
+
+            if new.get(woeid, False):
+
+                if new.get(alias_k, False):
+                    new[ alias_k ].append(alias_v)
+                else:
+                    new[ alias_k ] = [ alias_v ]
+
+            else:
+                new = { 'woeid': woeid }
+                new[ alias_k ] = [ alias_v ]
+
+        #
+
+        if len(new.keys()):
+            new = self.foo(new)
+            docs.append(new)
+            new = {}
+
+        if len(docs):
+            self.solr.add(docs)
+
+    def zf_reader(self, fname):
+
+        fh = self.zf.open(fname)
+        return unicodecsv.UnicodeReader(fh, delimiter='\t')
+
+    def foo (self, new):
+
+        new['provider'] = 'geoplanet %s' % self.version
+
+        query = "woeid:%s" % new['woeid']
+
+        rsp = self.solr.search(q=query)
+
+        if rsp.hits:
+            old = rsp.docs[0]
+            del(old['date_indexed'])
+            del(old['_version_'])
+
+            new = dict(old.items() + new.items())
+
+        return new
+        
 if __name__ == '__main__':
 
     path = sys.argv[1]
 
-    parse_zipfile(path)
-
+    w = woedb()
+    w.parse_zipfile(path)
