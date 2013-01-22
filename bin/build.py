@@ -56,9 +56,10 @@ class woedb:
         self.parse_adjacencies(adjacencies)
 
         if changes in file_list:
-            # apply changes...
-            pass
+            self.parse_changes(changes)
 
+        logging.info("finished parsing %s" % path)
+        
     def parse_places(self, fname):
 
         logging.debug("parse places %s" % fname)
@@ -89,7 +90,7 @@ class woedb:
         if len(docs) == 1000:
             solr.add(docs)
 
-    def parse_adjacencies(zf, fname, version):
+    def parse_adjacencies(fname):
 
         logging.debug("parse adjacencies %s" % fname)
         return 
@@ -120,7 +121,6 @@ class woedb:
                 new = {}
 
                 if len(docs) == 10000:
-                    print "ADD docs"
                     self.solr.add(docs)
                     docs = []
 
@@ -146,6 +146,9 @@ class woedb:
 
         if len(docs):
             self.solr.add(docs)
+
+    def parse_changes(self, fname):
+        pass
 
     def zf_reader(self, fname):
 
