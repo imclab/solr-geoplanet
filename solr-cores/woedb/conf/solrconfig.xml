@@ -1,74 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!--
- Licensed to the Apache Software Foundation (ASF) under one or more
- contributor license agreements.  See the NOTICE file distributed with
- this work for additional information regarding copyright ownership.
- The ASF licenses this file to You under the Apache License, Version 2.0
- (the "License"); you may not use this file except in compliance with
- the License.  You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
--->
-
-<!-- 
-     For more details about configurations options that may appear in
-     this file, see http://wiki.apache.org/solr/SolrConfigXml. 
--->
 <config>
-  <!-- In all configuration below, a prefix of "solr." for class names
-       is an alias that causes solr to search appropriate packages,
-       including org.apache.solr.(search|update|request|core|analysis)
-
-       You may also specify a fully qualified Java classname if you
-       have your own custom plugins.
-    -->
-
-  <!-- Controls what version of Lucene various components of Solr
-       adhere to.  Generally, you want to use the latest version to
-       get all bug fixes and improvements. It is highly recommended
-       that you fully re-index after changing this setting as it can
-       affect both how text is indexed and queried.
-  -->
   <luceneMatchVersion>LUCENE_40</luceneMatchVersion>
 
-  <!-- <lib/> directives can be used to instruct Solr to load an Jars
-       identified and use them to resolve any "plugins" specified in
-       your solrconfig.xml or schema.xml (ie: Analyzers, Request
-       Handlers, etc...).
-
-       All directories and paths are resolved relative to the
-       instanceDir.
-
-       Please note that <lib/> directives are processed in the order
-       that they appear in your solrconfig.xml file, and are "stacked" 
-       on top of each other when building a ClassLoader - so if you have 
-       plugin jars with dependencies on other jars, the "lower level" 
-       dependency jars should be loaded first.
-
-       If a "./lib" directory exists in your instanceDir, all files
-       found in it are included as if you had used the following
-       syntax...
-       
-              <lib dir="./lib" />
-    -->
-
-  <!-- A 'dir' option by itself adds any files found in the directory 
-       to the classpath, this is useful for including all jars in a
-       directory.
-
-       When a 'regex' is specified in addition to a 'dir', only the
-       files in that directory which completely match the regex
-       (anchored on both ends) will be included.
-
-       The examples below can be used to load some solr-contribs along 
-       with their external dependencies.
-    -->
   <lib dir="../../../contrib/extraction/lib" regex=".*\.jar" />
   <lib dir="../../../dist/" regex="apache-solr-cell-\d.*\.jar" />
 
@@ -81,43 +14,9 @@
   <lib dir="../../../contrib/velocity/lib" regex=".*\.jar" />
   <lib dir="../../../dist/" regex="apache-solr-velocity-\d.*\.jar" />
 
-  <!-- If a 'dir' option (with or without a regex) is used and nothing
-       is found that matches, it will be ignored
-    -->
   <lib dir="/total/crap/dir/ignored" /> 
 
-  <!-- an exact 'path' can be used instead of a 'dir' to specify a 
-       specific jar file.  This will cause a serious error to be logged 
-       if it can't be loaded.
-    -->
-  <!--
-     <lib path="../a-jar-that-does-not-exist.jar" /> 
-  -->
-  
-  <!-- Data Directory
-
-       Used to specify an alternate directory to hold all index data
-       other than the default ./data under the Solr home.  If
-       replication is in use, this should match the replication
-       configuration.
-    -->
   <dataDir>${solr.data.dir:}</dataDir>
-
-
-  <!-- The DirectoryFactory to use for indexes.
-       
-       solr.StandardDirectoryFactory is filesystem
-       based and tries to pick the best implementation for the current
-       JVM and platform.  solr.NRTCachingDirectoryFactory, the default,
-       wraps solr.StandardDirectoryFactory and caches small files in memory
-       for better NRT performance.
-
-       One can force a particular implementation via solr.MMapDirectoryFactory,
-       solr.NIOFSDirectoryFactory, or solr.SimpleFSDirectoryFactory.
-
-       solr.RAMDirectoryFactory is memory based, not
-       persistent, and doesn't work with replication.
-    -->
   <directoryFactory name="DirectoryFactory" 
                     class="${solr.directoryFactory:solr.NRTCachingDirectoryFactory}"/> 
 
@@ -747,75 +646,19 @@
        queries across multiple shards
     -->
   <requestHandler name="/select" class="solr.SearchHandler">
-    <!-- default values for query parameters can be specified, these
-         will be overridden by parameters in the request
-      -->
      <lst name="defaults">
        <str name="echoParams">explicit</str>
+       <str name="wt">json</str>
+       <str name="indent">true</str>
        <int name="rows">10</int>
-       <str name="df">text</str>
      </lst>
-    <!-- In addition to defaults, "appends" params can be specified
-         to identify values which should be appended to the list of
-         multi-val params from the query (or the existing "defaults").
-      -->
-    <!-- In this example, the param "fq=instock:true" would be appended to
-         any query time fq params the user may specify, as a mechanism for
-         partitioning the index, independent of any user selected filtering
-         that may also be desired (perhaps as a result of faceted searching).
-
-         NOTE: there is *absolutely* nothing a client can do to prevent these
-         "appends" values from being used, so don't use this mechanism
-         unless you are sure you always want it.
-      -->
-    <!--
-       <lst name="appends">
-         <str name="fq">inStock:true</str>
-       </lst>
-      -->
-    <!-- "invariants" are a way of letting the Solr maintainer lock down
-         the options available to Solr clients.  Any params values
-         specified here are used regardless of what values may be specified
-         in either the query, the "defaults", or the "appends" params.
-
-         In this example, the facet.field and facet.query params would
-         be fixed, limiting the facets clients can use.  Faceting is
-         not turned on by default - but if the client does specify
-         facet=true in the request, these are the only facets they
-         will be able to see counts for; regardless of what other
-         facet.field or facet.query params they may specify.
-
-         NOTE: there is *absolutely* nothing a client can do to prevent these
-         "invariants" values from being used, so don't use this mechanism
-         unless you are sure you always want it.
-      -->
-    <!--
-       <lst name="invariants">
-         <str name="facet.field">cat</str>
-         <str name="facet.field">manu_exact</str>
-         <str name="facet.query">price:[* TO 500]</str>
-         <str name="facet.query">price:[500 TO *]</str>
-       </lst>
-      -->
-    <!-- If the default list of SearchComponents is not desired, that
-         list can either be overridden completely, or components can be
-         prepended or appended to the default list.  (see below)
-      -->
-    <!--
-       <arr name="components">
-         <str>nameOfCustomComponent1</str>
-         <str>nameOfCustomComponent2</str>
-       </arr>
-      -->
     </requestHandler>
 
-  <!-- A request handler that returns indented JSON by default -->
   <requestHandler name="/query" class="solr.SearchHandler">
      <lst name="defaults">
        <str name="echoParams">explicit</str>
        <str name="wt">json</str>
        <str name="indent">true</str>
-       <str name="df">text</str>
      </lst>
   </requestHandler>
 
@@ -948,14 +791,16 @@
        This handler will pick a response format to match the input
        if the 'wt' parameter is not explicit
     -->
+
   <requestHandler name="/update" class="solr.UpdateRequestHandler">
     <!-- See below for information on defining 
          updateRequestProcessorChains that can be used by name 
          on each Update Request
       -->
+
     <!--
        <lst name="defaults">
-         <str name="update.chain">dedupe</str>
+         <str name="update.chain">uuid</str>
        </lst>
        -->
   </requestHandler>
@@ -964,6 +809,7 @@
   <requestHandler name="/update/json" class="solr.JsonUpdateRequestHandler">
         <lst name="defaults">
          <str name="stream.contentType">application/json</str>
+         <!-- <str name="update.chain">uuid</str> -->
        </lst>
   </requestHandler>
   <requestHandler name="/update/csv" class="solr.CSVRequestHandler">
@@ -1465,11 +1311,13 @@
        results for a given query regardless of the normal lucene
        scoring.
     -->
-  <searchComponent name="elevator" class="solr.QueryElevationComponent" >
     <!-- pick a fieldType to analyze queries -->
+  <!--
+  <searchComponent name="elevator" class="solr.QueryElevationComponent" >
     <str name="queryFieldType">string</str>
     <str name="config-file">elevate.xml</str>
   </searchComponent>
+  -->
 
   <!-- A request handler for demonstrating the elevator component -->
   <requestHandler name="/elevate" class="solr.SearchHandler" startup="lazy">
@@ -1618,8 +1466,16 @@
        <processor class="solr.LogUpdateProcessorFactory" />
        <processor class="solr.RunUpdateProcessorFactory" />
      </updateRequestProcessorChain>
+
     -->
-  
+
+  <updateRequestProcessorChain name="uuid">
+    <processor class="solr.UUIDUpdateProcessorFactory">
+      <str name="fieldName">uuid</str>
+    </processor>
+    <processor class="solr.RunUpdateProcessorFactory" />
+  </updateRequestProcessorChain>
+
   <!-- Language identification
 
        This example update chain identifies the language of the incoming
