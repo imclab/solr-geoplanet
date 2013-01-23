@@ -6,23 +6,22 @@
 
    <field name="_version_" type="tlong" indexed="true" stored="true"/>
 
+        <!-- single value WOE ID fields -->
 	<field name="woeid" type="woeid" indexed="true" stored="true"  multiValued="false" required="true" />
-	<field name="parent_woeid" type="woeid" indexed="true" stored="true" multiValued="false" required="false" />
-	<field name="adjacent_woeid" type="woeid" indexed="true" stored="true" multiValued="true" required="false" />
+	<field name="woeid_parent" type="woeid" indexed="true" stored="true" multiValued="false" required="false" />
+	<field name="woeid_superseded_by" type="woeid" indexed="true" stored="true" multiValued="false" required="false" />
 
-	<field name="superseded_by_woeid" type="woeid" indexed="true" stored="true" multiValued="false" required="false" />
-	<field name="supersedes_woeid" type="woeid" indexed="true" stored="true" multiValued="true" required="false" />
+        <!-- multivalue value WOE ID fields -->
+	<!-- woeid_adjacent -->
+	<!-- woeid_supersedes -->
+
+	<dynamicField name="woeid_*" type="woeid" indexed="true" stored="true" multiValued="true" required="false" />
 
 	<field name="placetype" type="placetype" indexed="true" stored="true" multiValued="false" required="false" />
 
 	<!-- dates -->
 
 	<field name="date_indexed" type="tdate" indexed="false" stored="true" multiValued="false" required="false" default="NOW" />
-
-	<!-- hierarchy stuff (experimental) -->
-
-	<field name="fullname" type="placename" indexed="true" stored="true" multiValued="false" required="false" termVectors="true" />
-	<field name="hierarchy_woeid" type="woeid" indexed="true" stored="true" multiValued="false" required="false" termVectors="true" />
 
 	<!-- place names -->
 
