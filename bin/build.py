@@ -97,30 +97,36 @@ class woedb:
         docs = []
         new = {}
 
-        # {u'Neighbour_WOE_ID': u'12638515', u'Place_ISO': u'FR', u'Place_WOE_ID': u'12638373', u'Neighbour_ISO': u'FR'}
-
         for row in reader:
 
-            woeid = row['Place_WOE_ID']
+            woeid = int(row['Place_WOE_ID'])
+            adjacent_woeid = int(row['Neighbour_WOE_ID'])
+
             prev = new.get('woeid')
-
-            adjacent_woeid = row['Neighbour_WOE_ID']
-
-            print "%s - %s" % (woeid, prev)
 
             if prev and prev != woeid:
 
-                # TO DO... account for existing adjacencies...
-                new = self.foo(new)
+                old = self.get_by_woeid(new['woeid'])
+
+                if old:
+
+                    del(old['date_indexed'])
+                    del(old['_version_'])
+
+                    adjacencies = old.get('adjacent_woeid', [])
+                    
+                    for a in new['adjacent_woeid']:
+                        if not a in adjacencies:
+                            adjacencies.append(a)
+
+                    new = old
+                    new['adjacent_woeid'] = adjacencies
+                    
                 docs.append(new)
 
                 new = {}
 
-                if len(docs) == 10:
-
-                    print docs
-                    sys.exit()
-
+                if len(docs) == 1000:
                     self.solr.add(docs)
                     docs = []
 
@@ -151,7 +157,7 @@ class woedb:
 
         for row in reader:
 
-            woeid = row['WOE_ID']
+            woeid = int(row['WOE_ID'])
             prev = new.get('woeid')
 
             # print "%s -> %s" % (woeid, prev)
@@ -161,6 +167,7 @@ class woedb:
 
             if prev and prev != woeid:
 
+                # TO DO: account for existing aliases...
                 new = self.foo(new)
                 docs.append(new)
 
@@ -169,8 +176,6 @@ class woedb:
                 if len(docs) == 10000:
                     self.solr.add(docs)
                     docs = []
-
-            #
 
             if new.get(woeid, False):
 
@@ -201,25 +206,37 @@ class woedb:
         fh = self.zf.open(fname)
         return unicodecsv.UnicodeReader(fh, delimiter='\t')
 
-    def foo (self, new):
+    def get_by_woeid(self, woeid):
 
-        new['provider'] = 'geoplanet %s' % self.version
-
-        query = "woeid:%s" % new['woeid']
+        query = "woeid:%s" % woeid
 
         rsp = self.solr.search(q=query)
+
+        if rsp.hits:
+            return rsp.docs[0]
+
+        else:
+            return None
+
+    # deprecated... (20130122/straup)
+
+    def foo (self, new):
+
+        old = self.get_by_woeid(new['woeid'])
 
         # TO DO: check version between old and new
         # if new > old then do not merge; new trumps
         # all ... I think (20130122/straup)
 
-        if rsp.hits:
+        if old:
+
             old = rsp.docs[0]
             del(old['date_indexed'])
             del(old['_version_'])
 
             new = dict(old.items() + new.items())
 
+        new['provider'] = 'geoplanet %s' % self.version
         return new
         
 if __name__ == '__main__':
