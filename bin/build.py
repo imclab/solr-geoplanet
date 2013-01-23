@@ -49,9 +49,9 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        self.parse_places(places)
+        # self.parse_places(places)
 
-        self.parse_aliases(aliases)
+        # self.parse_aliases(aliases)
 
         self.parse_adjacencies(adjacencies)
 
@@ -63,7 +63,6 @@ class woedb:
     def parse_places(self, fname):
 
         logging.debug("parse places %s" % fname)
-        return
 
         reader = self.zf_reader(fname)
         docs = []
@@ -90,10 +89,57 @@ class woedb:
         if len(docs) == 1000:
             solr.add(docs)
 
-    def parse_adjacencies(fname):
+    def parse_adjacencies(self, fname):
 
         logging.debug("parse adjacencies %s" % fname)
-        return 
+
+        reader = self.zf_reader(fname)
+        docs = []
+        new = {}
+
+        # {u'Neighbour_WOE_ID': u'12638515', u'Place_ISO': u'FR', u'Place_WOE_ID': u'12638373', u'Neighbour_ISO': u'FR'}
+
+        for row in reader:
+
+            woeid = row['Place_WOE_ID']
+            prev = new.get('woeid')
+
+            adjacent_woeid = row['Neighbour_WOE_ID']
+
+            print "%s - %s" % (woeid, prev)
+
+            if prev and prev != woeid:
+
+                # TO DO... account for existing adjacencies...
+                new = self.foo(new)
+                docs.append(new)
+
+                new = {}
+
+                if len(docs) == 10:
+
+                    print docs
+                    sys.exit()
+
+                    self.solr.add(docs)
+                    docs = []
+
+            #
+
+            if new.get(woeid, False):
+                new['adjacent_woeid'].append(adjacent_woeid)
+            else:
+                new = {'woeid' : woeid, 'adjacent_woeid' : [ adjacent_woeid  ] }
+
+        #
+
+        if len(new.keys()):
+            new = self.foo(new)
+            docs.append(new)
+            new = {}
+
+        if len(docs):
+            self.solr.add(docs)
 
     def parse_aliases(self, fname):
 
