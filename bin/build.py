@@ -17,7 +17,8 @@ class woedb:
 
         self.opts = opts
 
-        self.solr = pysolr.Solr('http://localhost:8983/solr/woedb')
+        self.solr = pysolr.Solr(self.opts.solr)
+
         self.version = None
         self.zf = None
 
@@ -49,9 +50,9 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        # self.parse_places(places)
+        self.parse_places(places)
 
-        # self.parse_aliases(aliases)
+        self.parse_aliases(aliases)
 
         self.parse_adjacencies(adjacencies)
 
@@ -73,7 +74,7 @@ class woedb:
 
             new = {
                 'woeid': row['WOE_ID'],
-                'parent_woeid': row['Parent_ID'],
+                'woeid_parent': row['Parent_ID'],
                 'name': row['Name'],
                 'placetype': row['PlaceType'],
                 'lang' : row['Language'],
@@ -81,21 +82,18 @@ class woedb:
                 'provider': 'geoplanet %s' % self.version
                 }
 
-            # pretty sure this is unnecessary - the datapacks
-            # are meant to clobber older versions...
+            docs.append(new)
 
-            # new = self.foo(new)
-
-        docs.append(new)
-
-        if len(docs) == 10000:
-            counter += len(docs)
-            solr.add(docs)
-            docs = []
+            if len(docs) == 10000:
+                logging.info("adjacencies counter @ %s" % counter)
+                counter += len(docs)
+                self.solr.add(docs)
+                docs = []
             
         if len(docs):
+            logging.info("adjacencies counter @ %s" % counter)
             counter += len(docs)
-            solr.add(docs)
+            self.solr.add(docs)
 
         logging.info("added %s docs" % counter)
         return True
@@ -114,12 +112,12 @@ class woedb:
 
             # TO DO: change the change for adjacent woeid
             # to be a dynamic adjacent_PLACETYPE field ?
-            # do a lookup on adjacent_woeid (20130122/straup)
+            # do a lookup on woeid_adjacent (20130122/straup)
             
-            # make adjacent_woeid a copy field...
+            # make woeid_adjacent a copy field...
 
             woeid = int(row['Place_WOE_ID'])
-            adjacent_woeid = int(row['Neighbour_WOE_ID'])
+            woeid_adjacent = int(row['Neighbour_WOE_ID'])
 
             prev = new.get('woeid', False)
 
@@ -141,9 +139,9 @@ class woedb:
             # add the neighbour
 
             if new.get(woeid, False):
-                new['adjacent_woeid'].append(adjacent_woeid)
+                new['woeid_adjacent'].append(woeid_adjacent)
             else:
-                new = {'woeid' : woeid, 'adjacent_woeid' : [ adjacent_woeid  ] }
+                new = {'woeid' : woeid, 'woeid_adjacent' : [ woeid_adjacent  ] }
 
         # clean up any stragglers
 
@@ -167,15 +165,16 @@ class woedb:
             del(old['date_indexed'])
             del(old['_version_'])
 
-            adjacencies = old.get('adjacent_woeid', [])
+            adjacencies = old.get('woeid_adjacent', [])
                     
-            for a in new['adjacent_woeid']:
+            for a in new['woeid_adjacent']:
                 if not a in adjacencies:
                     adjacencies.append(a)
 
             new = old
-            new['adjacent_woeid'] = adjacencies
+            new['woeid_adjacent'] = adjacencies
 
+        new['provider'] = 'geoplanet %s' % self.version
         return new
 
     def parse_aliases(self, fname):
@@ -200,8 +199,7 @@ class woedb:
 
             if prev and prev != woeid:
 
-                # TO DO: account for existing aliases...
-                new = self.foo(new)
+                new = self._massage_aliases(new)
                 docs.append(new)
 
                 new = {}
@@ -211,6 +209,8 @@ class woedb:
                     counter += len(docs)
                     self.solr.add(docs)
                     docs = []
+
+            #
 
             if new.get(woeid, False):
 
@@ -226,24 +226,47 @@ class woedb:
         #
 
         if len(new.keys()):
-            new = self.foo(new)
+            new = self._massage_aliases(new)
             docs.append(new)
-            new = {}
 
         if len(docs):
             logging.info("aliases counter @ %s" % counter)
             counter += len(docs)
             self.solr.add(docs)
 
-        logging.info("updated %s docs" % counter)
+        logging.info("updated aliases for %s docs" % counter)
 
     def _massage_aliases(self, new):
 
         old = self.get_by_woeid(new['woeid'])
     
         if old:
-            pass
 
+            del(old['date_indexed'])
+            del(old['_version_'])
+
+            aliases = {}
+
+            for k, v in new.items():
+
+                if not k.startswith('alias'):
+                    continue
+
+                if old.get(k, False):
+                    
+                    aliases[k] = old[k]
+
+                    for a in new[k]:
+                        if not a in aliases[k]:
+                            aliases[k].append(a)
+
+                else:
+                    aliases[k] = k
+
+
+            new = dict(old.items() + aliases.items())
+
+        new['provider'] = 'geoplanet %s' % self.version
         return new
 
     def parse_changes(self, fname):
@@ -265,33 +288,24 @@ class woedb:
 
         else:
             return None
-
-    # deprecated... (20130122/straup)
-
-    def foo (self, new):
-
-        old = self.get_by_woeid(new['woeid'])
-
-        # TO DO: check version between old and new
-        # if new > old then do not merge; new trumps
-        # all ... I think (20130122/straup)
-
-        if old:
-
-            old = rsp.docs[0]
-            del(old['date_indexed'])
-            del(old['_version_'])
-
-            new = dict(old.items() + new.items())
-
-        new['provider'] = 'geoplanet %s' % self.version
-        return new
         
 if __name__ == '__main__':
 
-    path = sys.argv[1]
+    import optparse
 
-    opts = None
+    parser = optparse.OptionParser("""build.py --options geoplanet_data_X.Y.Z.zip""")
+    parser.add_option("-s", "--solr", dest="solr", help="your solr endpoint; default is http://localhost:8983/solr/woedb", default='http://localhost:8983/solr/woedb')
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="enable chatty logging; default is false", default=False)
+
+    (opts, args) = parser.parse_args()
+
+    if opts.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    path = args[0]
+    print path
 
     w = woedb(opts)
     w.parse_zipfile(path)
