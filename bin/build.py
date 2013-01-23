@@ -271,7 +271,47 @@ class woedb:
         return new
 
     def parse_changes(self, fname):
-        pass
+
+        logging.debug("parse aliases %s" % fname)
+        logging.warning("this has not been tested yet...")
+
+        return False
+
+        reader = self.zf_reader(fname)
+
+        for row in reader:
+
+            docs = []
+
+            old_woeid = int(row['Woe_id'])
+            new_woeid = int(row['Rep_id'])
+
+            old = self.get_by_woeid(old_woeid)
+
+            del(old['date_indexed'])
+            del(old['_version_'])
+
+            old['woeid_superseded_by'] = new_woeid
+            old['provider'] = 'geoplanet %s' % self.version
+
+            docs.append(old)
+
+            new = self.get_by_woeid(new_woeid)
+            new(old['date_indexed'])
+            new(old['_version_'])
+
+            supersedes = new.get('woeid_supersedes', [])
+
+            if not old_woeid in supersedes:
+                superseses.append(old_woeid)
+
+                new['woeid_supersede'] = supersedes
+                # new['provider'] = 'geoplanet %s' % self.version
+            
+                docs.append(new)
+
+            if len(docs):
+                self.solr.add(docs)
 
     def zf_reader(self, fname):
 
