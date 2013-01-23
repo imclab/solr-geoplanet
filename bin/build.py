@@ -85,17 +85,17 @@ class woedb:
             docs.append(new)
 
             if len(docs) == 10000:
-                logging.info("adjacencies counter @ %s" % counter)
+                logging.info("places %s counter @ %s" % (self.version, counter))
                 counter += len(docs)
                 self.solr.add(docs)
                 docs = []
             
         if len(docs):
-            logging.info("adjacencies counter @ %s" % counter)
+            logging.info("places %s counter @ %s" % (self.version, counter))
             counter += len(docs)
             self.solr.add(docs)
 
-        logging.info("added %s docs" % counter)
+        logging.info("places %s added %s docs" % (self.version, counter))
         return True
 
     def parse_adjacencies(self, fname):
