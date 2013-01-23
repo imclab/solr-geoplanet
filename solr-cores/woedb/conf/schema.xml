@@ -71,6 +71,9 @@
 
         <field name="area" type="coord" indexed="true" stored="true" multiValued="false" required="false" />
 
+	<!-- concordances! -->
+	<dynamicField name="concordance_*" type="string" indexed="true" stored="true" multiValued="true" required="false" />
+
  </fields>
 
  <uniqueKey>woeid</uniqueKey>
