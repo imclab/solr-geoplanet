@@ -261,7 +261,7 @@ class woedb:
                             aliases[k].append(a)
 
                 else:
-                    aliases[k] = k
+                    aliases[k] = v
 
 
             new = dict(old.items() + aliases.items())
