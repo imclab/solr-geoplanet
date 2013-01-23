@@ -67,6 +67,8 @@ class woedb:
         reader = self.zf_reader(fname)
         docs = []
 
+        counter = 0
+
         for row in reader:
 
             new = {
@@ -76,18 +78,27 @@ class woedb:
                 'placetype': row['PlaceType'],
                 'lang' : row['Language'],
                 'iso': row['ISO'],
+                'provider': 'geoplanet %s' % self.version
                 }
 
-            new = self.foo(new)
+            # pretty sure this is unnecessary - the datapacks
+            # are meant to clobber older versions...
+
+            # new = self.foo(new)
 
         docs.append(new)
 
         if len(docs) == 10000:
+            counter += len(docs)
             solr.add(docs)
             docs = []
-
-        if len(docs) == 1000:
+            
+        if len(docs):
+            counter += len(docs)
             solr.add(docs)
+
+        logging.info("added %s docs" % counter)
+        return True
 
     def parse_adjacencies(self, fname):
 
@@ -97,55 +108,75 @@ class woedb:
         docs = []
         new = {}
 
+        counter = 0
+
         for row in reader:
+
+            # TO DO: change the change for adjacent woeid
+            # to be a dynamic adjacent_PLACETYPE field ?
+            # do a lookup on adjacent_woeid (20130122/straup)
+            
+            # make adjacent_woeid a copy field...
 
             woeid = int(row['Place_WOE_ID'])
             adjacent_woeid = int(row['Neighbour_WOE_ID'])
 
-            prev = new.get('woeid')
+            prev = new.get('woeid', False)
+
+            # if this is a new woeid then submit updates
 
             if prev and prev != woeid:
 
-                old = self.get_by_woeid(new['woeid'])
-
-                if old:
-
-                    del(old['date_indexed'])
-                    del(old['_version_'])
-
-                    adjacencies = old.get('adjacent_woeid', [])
-                    
-                    for a in new['adjacent_woeid']:
-                        if not a in adjacencies:
-                            adjacencies.append(a)
-
-                    new = old
-                    new['adjacent_woeid'] = adjacencies
-                    
+                new = self._massage_adjacent(new)
                 docs.append(new)
 
                 new = {}
 
-                if len(docs) == 1000:
+                if len(docs) == 10000:
+                    logging.info("adjacencies counter @ %s" % counter)
+                    counter += len(docs)
                     self.solr.add(docs)
                     docs = []
 
-            #
+            # add the neighbour
 
             if new.get(woeid, False):
                 new['adjacent_woeid'].append(adjacent_woeid)
             else:
                 new = {'woeid' : woeid, 'adjacent_woeid' : [ adjacent_woeid  ] }
 
-        #
+        # clean up any stragglers
 
         if len(new.keys()):
-            new = self.foo(new)
+            new = self._massage_adjacent(new)
             docs.append(new)
-            new = {}
 
         if len(docs):
+            logging.info("adjacencies counter @ %s" % counter)
+            counter += len(docs)
             self.solr.add(docs)
+
+        logging.info("updated %s docs" % counter)
+
+    def _massage_adjacent(self, new):
+
+        old = self.get_by_woeid(new['woeid'])
+
+        if old:
+
+            del(old['date_indexed'])
+            del(old['_version_'])
+
+            adjacencies = old.get('adjacent_woeid', [])
+                    
+            for a in new['adjacent_woeid']:
+                if not a in adjacencies:
+                    adjacencies.append(a)
+
+            new = old
+            new['adjacent_woeid'] = adjacencies
+
+        return new
 
     def parse_aliases(self, fname):
 
@@ -154,6 +185,8 @@ class woedb:
         reader = self.zf_reader(fname)
         docs = []
         new = {}
+
+        counter = 0
 
         for row in reader:
 
@@ -174,6 +207,8 @@ class woedb:
                 new = {}
 
                 if len(docs) == 10000:
+                    logging.info("aliases counter @ %s" % counter)
+                    counter += len(docs)
                     self.solr.add(docs)
                     docs = []
 
@@ -196,7 +231,20 @@ class woedb:
             new = {}
 
         if len(docs):
+            logging.info("aliases counter @ %s" % counter)
+            counter += len(docs)
             self.solr.add(docs)
+
+        logging.info("updated %s docs" % counter)
+
+    def _massage_aliases(self, new):
+
+        old = self.get_by_woeid(new['woeid'])
+    
+        if old:
+            pass
+
+        return new
 
     def parse_changes(self, fname):
         pass
