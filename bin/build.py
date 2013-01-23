@@ -22,6 +22,8 @@ class woedb:
         self.version = None
         self.zf = None
 
+        self.update_count = 100000
+
     def parse_zipfile(self, path):
 
         pattern = re.compile("geoplanet_data_([\d\.]+)\.zip$")
@@ -84,7 +86,7 @@ class woedb:
 
             docs.append(new)
 
-            if len(docs) == 10000:
+            if len(docs) == self.update_count:
                 logging.info("places %s counter @ %s" % (self.version, counter))
                 counter += len(docs)
                 self.solr.add(docs)
@@ -130,7 +132,7 @@ class woedb:
 
                 new = {}
 
-                if len(docs) == 10000:
+                if len(docs) == self.update_count:
                     logging.info("adjacencies counter @ %s" % counter)
                     counter += len(docs)
                     self.solr.add(docs)
@@ -204,7 +206,7 @@ class woedb:
 
                 new = {}
 
-                if len(docs) == 10000:
+                if len(docs) == self.update_count:
                     logging.info("aliases counter @ %s" % counter)
                     counter += len(docs)
                     self.solr.add(docs)
@@ -262,7 +264,6 @@ class woedb:
 
                 else:
                     aliases[k] = v
-
 
             new = dict(old.items() + aliases.items())
 
