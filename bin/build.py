@@ -10,6 +10,7 @@ import unicodecsv
 import re
 import os.path
 import logging
+import StringIO
 
 class woedb:
 
@@ -52,11 +53,11 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        self.parse_places(places)
+        # self.parse_places(places)
 
-        self.parse_aliases(aliases)
+        # self.parse_aliases(aliases)
 
-        self.parse_adjacencies(adjacencies)
+        # self.parse_adjacencies(adjacencies)
 
         if changes in file_list:
             self.parse_changes(changes)
@@ -275,8 +276,6 @@ class woedb:
         logging.debug("parse aliases %s" % fname)
         logging.warning("this has not been tested yet...")
 
-        return False
-
         reader = self.zf_reader(fname)
 
         for row in reader:
@@ -286,37 +285,87 @@ class woedb:
             old_woeid = int(row['Woe_id'])
             new_woeid = int(row['Rep_id'])
 
+            print "old: %s new: %s" % (old_woeid, new_woeid)
+
             old = self.get_by_woeid(old_woeid)
-
-            del(old['date_indexed'])
-            del(old['_version_'])
-
-            old['woeid_superseded_by'] = new_woeid
-            old['provider'] = 'geoplanet %s' % self.version
-
-            docs.append(old)
-
             new = self.get_by_woeid(new_woeid)
-            new(old['date_indexed'])
-            new(old['_version_'])
 
-            supersedes = new.get('woeid_supersedes', [])
+            print old
+            print new
 
-            if not old_woeid in supersedes:
-                superseses.append(old_woeid)
+            if old:
 
-                new['woeid_supersede'] = supersedes
-                # new['provider'] = 'geoplanet %s' % self.version
-            
-                docs.append(new)
+                del(old['date_indexed'])
+                del(old['_version_'])
+
+                old['woeid_superseded_by'] = new_woeid
+                old['provider'] = 'geoplanet %s' % self.version
+
+                logging.debug("old: %s new: %s" % (old_woeid, new_woeid))
+
+                docs.append(old)
+
+            else:
+
+                old = {}
+                old['woeid'] = old_woeid
+                old['woeid_superseded_by'] = new_woeid
+                old['provider'] = 'geoplanet %s' % self.version
+                docs.append(old)
+
+            if new:
+                del(new['date_indexed'])
+                del(new['_version_'])
+
+                supersedes = new.get('woeid_supersedes', [])
+                print "%s supersedes: %s" % (new_woeid, supersedes)
+
+                # logging.debug("new: %s supercedes: %s" % (new_woeid, supersedes))
+
+                if new.get("woeid_supersede", False):
+                    del(new["woeid_supersede"])
+
+                if not old_woeid in supersedes:
+                    supersedes.append(old_woeid)
+
+                    new['woeid_supersedes'] = supersedes
+                    docs.append(new)
+
+            else:
+                logging.warning("WTF... no record for new WOE ID (%s)" % new_woeid)
+
+            print "docs: %s" % len(docs)
+
+            print "---"
 
             if len(docs):
                 self.solr.add(docs)
 
-    def zf_reader(self, fname):
+    def zf_reader(self, fname, delimiter='\t'):
 
         fh = self.zf.open(fname)
-        return unicodecsv.UnicodeReader(fh, delimiter='\t')
+
+        # gggggrnnhhhnnnhnhn.... yes, really.
+
+        if self.version == '7.4.0':
+            
+            first = fh.next()
+
+            out = StringIO.StringIO()
+            out.write("\t".join(["Woe_id","Rep_id","Data_Version"]) + "\n")
+
+            while fh.readable():
+                try:
+                    out.write(fh.next())
+                except Exception, e:
+                    break
+
+            out.seek(0)
+
+            return unicodecsv.UnicodeReader(out, delimiter=delimiter)
+
+        else:
+            return unicodecsv.UnicodeReader(fh, delimiter=delimiter)
 
     def get_by_woeid(self, woeid):
 
@@ -345,8 +394,8 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.INFO)
 
-    path = args[0]
-    print path
-
     w = woedb(opts)
-    w.parse_zipfile(path)
+
+    for path in args:
+        logging.info("processing %s" %path)
+        w.parse_zipfile(path)
