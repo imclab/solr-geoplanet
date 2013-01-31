@@ -53,11 +53,9 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        # self.parse_places(places)
-
-        # self.parse_aliases(aliases)
-
-        # self.parse_adjacencies(adjacencies)
+        self.parse_places(places)
+        self.parse_aliases(aliases)
+        self.parse_adjacencies(adjacencies)
 
         if changes in file_list:
             self.parse_changes(changes)
@@ -74,6 +72,9 @@ class woedb:
         counter = 0
 
         for row in reader:
+
+            # FIX ME: this is eating things we care about like existing
+            # supersedes/d_by information (20130131/straup)
 
             new = {
                 'woeid': row['WOE_ID'],
@@ -346,8 +347,11 @@ class woedb:
         fh = self.zf.open(fname)
 
         # gggggrnnhhhnnnhnhn.... yes, really.
+	# I wonder if they're all like this.
 
-        if self.version == '7.4.0':
+        known_bad = ('7.4.0', '7.4.1')
+
+        if self.version in known_bad:
             
             first = fh.next()
 
