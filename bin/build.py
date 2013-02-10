@@ -25,6 +25,11 @@ class woedb:
 
         self.update_count = 100000
 
+    def purge(self):
+        logging.info("purging the database...")
+        self.solr.delete(q='*:*')
+        self.solr.optimize()
+
     def parse_zipfile(self, path):
 
         pattern = re.compile("geoplanet_data_([\d\.]+)\.zip$")
@@ -73,9 +78,6 @@ class woedb:
 
         for row in reader:
 
-            # FIX ME: this is eating things we care about like existing
-            # supersedes/d_by information (20130131/straup)
-
             new = {
                 'woeid': row['WOE_ID'],
                 'woeid_parent': row['Parent_ID'],
@@ -83,8 +85,9 @@ class woedb:
                 'placetype': row['PlaceType'],
                 'lang' : row['Language'],
                 'iso': row['ISO'],
-                'provider': 'geoplanet %s' % self.version
                 }
+
+            new = self._massage_place(new)
 
             docs.append(new)
 
@@ -101,6 +104,20 @@ class woedb:
 
         logging.info("places %s added %s docs" % (self.version, counter))
         return True
+
+    def _massage_place(self, new):
+
+        old = self.get_by_woeid(new['woeid'])
+
+        if old:
+
+            for prop in ('woeid_supersedes', 'woeid_superseded_by'):
+
+                if old.get(prop, False):
+                    new[prop] = old[prop]
+
+        new['provider'] = 'geoplanet %s' % self.version
+        return new
 
     def parse_adjacencies(self, fname):
 
@@ -391,6 +408,8 @@ if __name__ == '__main__':
     parser.add_option("-s", "--solr", dest="solr", help="your solr endpoint; default is http://localhost:8983/solr/woedb", default='http://localhost:8983/solr/woedb')
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="enable chatty logging; default is false", default=False)
 
+    parser.add_option("--purge", dest="purge", action="store_true", help="...", default=False)
+
     (opts, args) = parser.parse_args()
 
     if opts.verbose:
@@ -399,6 +418,9 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.INFO)
 
     w = woedb(opts)
+
+    if opts.purge:
+        w.purge()
 
     for path in args:
         logging.info("processing %s" %path)
