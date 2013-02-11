@@ -30,6 +30,12 @@ class woedb:
         self.solr.delete(q='*:*')
         self.solr.optimize()
 
+    def _add(self, docs, optimize=True):
+        self.solr.add(docs)
+
+        if optimize:
+            self.solr.optimize()
+
     def parse_zipfile(self, path):
 
         pattern = re.compile("geoplanet_data_([\d\.]+)\.zip$")
@@ -94,13 +100,15 @@ class woedb:
             if len(docs) == self.update_count:
                 logging.info("places %s counter @ %s" % (self.version, counter))
                 counter += len(docs)
-                self.solr.add(docs)
+
+                self._add(docs)
                 docs = []
             
         if len(docs):
             logging.info("places %s counter @ %s" % (self.version, counter))
             counter += len(docs)
-            self.solr.add(docs)
+
+            self._add(docs)
 
         logging.info("places %s added %s docs" % (self.version, counter))
         return True
@@ -154,7 +162,7 @@ class woedb:
                 if len(docs) == self.update_count:
                     logging.info("adjacencies counter @ %s" % counter)
                     counter += len(docs)
-                    self.solr.add(docs)
+                    self._add(docs)
                     docs = []
 
             # add the neighbour
@@ -173,7 +181,7 @@ class woedb:
         if len(docs):
             logging.info("adjacencies counter @ %s" % counter)
             counter += len(docs)
-            self.solr.add(docs)
+            self._add(docs)
 
         logging.info("updated %s docs" % counter)
 
@@ -228,7 +236,7 @@ class woedb:
                 if len(docs) == self.update_count:
                     logging.info("aliases counter @ %s" % counter)
                     counter += len(docs)
-                    self.solr.add(docs)
+                    self._add(docs)
                     docs = []
 
             #
@@ -253,7 +261,7 @@ class woedb:
         if len(docs):
             logging.info("aliases counter @ %s" % counter)
             counter += len(docs)
-            self.solr.add(docs)
+            self._add(docs)
 
         logging.info("updated aliases for %s docs" % counter)
 
@@ -357,7 +365,9 @@ class woedb:
             print "---"
 
             if len(docs):
-                self.solr.add(docs)
+                self._add(docs, False)
+
+        self.solr.optimize()
 
     def zf_reader(self, fname, delimiter='\t'):
 
