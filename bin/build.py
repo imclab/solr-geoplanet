@@ -378,7 +378,7 @@ class woedb:
 
         known_bad = ('7.4.0', '7.4.1')
 
-        if self.version in known_bad:
+        if fname.startswith('geoplanet_changes') and self.version in known_bad:
             
             first = fh.next()
 
