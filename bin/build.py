@@ -64,9 +64,9 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        # self.parse_places(places)
+        self.parse_places(places)
         self.parse_aliases(aliases)
-        # self.parse_adjacencies(adjacencies)
+        self.parse_adjacencies(adjacencies)
 
         if changes in file_list:
             self.parse_changes(changes)
