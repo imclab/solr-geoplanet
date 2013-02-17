@@ -64,9 +64,9 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        self.parse_places(places)
+        # self.parse_places(places)
         self.parse_aliases(aliases)
-        self.parse_adjacencies(adjacencies)
+        # self.parse_adjacencies(adjacencies)
 
         if changes in file_list:
             self.parse_changes(changes)
@@ -133,49 +133,40 @@ class woedb:
 
         reader = self.zf_reader(fname)
         docs = []
-        new = {}
+
+        last_woeid = None
+        adjacent = []
 
         counter = 0
 
         for row in reader:
 
-            # TO DO: change the change for adjacent woeid
-            # to be a dynamic adjacent_PLACETYPE field ?
-            # do a lookup on woeid_adjacent (20130122/straup)
-            
-            # make woeid_adjacent a copy field...
-
             woeid = int(row['Place_WOE_ID'])
             woeid_adjacent = int(row['Neighbour_WOE_ID'])
 
-            prev = new.get('woeid', False)
+            str_adjacent = ",".join(map(str, adjacent))
+            logging.debug("woeid: %s last: %s adjacent: %s" % (woeid, last_woeid, str_adjacent))
 
-            # if this is a new woeid then submit updates
+            if last_woeid and last_woeid != woeid:
 
-            if prev and prev != woeid:
-
-                new = self._massage_adjacent(new)
+                new = self._massage_adjacent(last_woeid, adjacent)
                 docs.append(new)
 
-                new = {}
+                adjacent = []
 
-                if len(docs) == self.update_count:
-                    logging.info("adjacencies counter @ %s" % counter)
-                    counter += len(docs)
-                    self._add(docs)
-                    docs = []
+            last_woeid = woeid
+            adjacent.append(woeid_adjacent)
 
-            # add the neighbour
-
-            if new.get(woeid, False):
-                new['woeid_adjacent'].append(woeid_adjacent)
-            else:
-                new = {'woeid' : woeid, 'woeid_adjacent' : [ woeid_adjacent  ] }
+            if len(docs) == self.update_count:
+                logging.info("adjacencies counter @ %s" % counter)
+                counter += len(docs)
+                self._add(docs)
+                docs = []
 
         # clean up any stragglers
 
-        if len(new.keys()):
-            new = self._massage_adjacent(new)
+        if len(adjacent):
+            new = self._massage_adjacent(last_woeid, adjacent)
             docs.append(new)
 
         if len(docs):
@@ -185,26 +176,36 @@ class woedb:
 
         logging.info("updated %s docs" % counter)
 
-    def _massage_adjacent(self, new):
+    def _massage_adjacent(self, woeid, adjacent):
 
-        old = self.get_by_woeid(new['woeid'])
+        loc = self.get_by_woeid(woeid)
 
-        if old:
+        # TO DO: change the change for adjacent woeid
+        # to be a dynamic adjacent_PLACETYPE field ?
+        # do a lookup on woeid_adjacent (20130122/straup)
+            
+        # loc should always be defined but sometimes it
+        # isn't because ... puppies? (20130217/straup)
 
-            del(old['date_indexed'])
-            del(old['_version_'])
+        if not loc:
+            loc['woeid'] = woeid
+            loc['woeid_adjacent'] = adjacent
 
-            adjacencies = old.get('woeid_adjacent', [])
+        else:
+
+            del(loc['date_indexed'])
+            del(loc['_version_'])
+
+            already_adjacent = loc.get('woeid_adjacent', [])
                     
-            for a in new['woeid_adjacent']:
-                if not a in adjacencies:
-                    adjacencies.append(a)
+            for a in adjacent:
+                if not a in already_adjacent:
+                    already_adjacent.append(a)
 
-            new = old
-            new['woeid_adjacent'] = adjacencies
+            loc['woeid_adjacent'] = already_adjacent
 
-        new['provider'] = 'geoplanet %s' % self.version
-        return new
+        loc['provider'] = 'geoplanet %s' % self.version
+        return loc
 
     def parse_aliases(self, fname):
 
@@ -212,50 +213,46 @@ class woedb:
 
         reader = self.zf_reader(fname)
         docs = []
-        new = {}
+
+        last_woeid = None
+        aliases = {}
 
         counter = 0
 
         for row in reader:
 
             woeid = int(row['WOE_ID'])
-            prev = new.get('woeid')
-
-            # print "%s -> %s" % (woeid, prev)
 
             alias_k = "alias_%s_%s" % (row['Language'], row['Name_Type'])
             alias_v = row['Name']
 
-            if prev and prev != woeid:
+            # logging.debug("woeid: %s last: %s row: %s" % (woeid, last_woeid, row))
+            logging.debug("woeid: %s last: %s aliases: %s" % (woeid, last_woeid, aliases))
 
-                new = self._massage_aliases(new)
+            if last_woeid and last_woeid != woeid:
+
+                new = self._massage_aliases(last_woeid, aliases)
                 docs.append(new)
 
-                new = {}
+                aliases = {}
 
-                if len(docs) == self.update_count:
-                    logging.info("aliases counter @ %s" % counter)
-                    counter += len(docs)
-                    self._add(docs)
-                    docs = []
-
-            #
-
-            if new.get(woeid, False):
-
-                if new.get(alias_k, False):
-                    new[ alias_k ].append(alias_v)
-                else:
-                    new[ alias_k ] = [ alias_v ]
-
+            if aliases.get(alias_k):
+                aliases[ alias_k ].append(alias_v)
             else:
-                new = { 'woeid': woeid }
-                new[ alias_k ] = [ alias_v ]
+                aliases[ alias_k ] = [ alias_v ]
+
+            last_woeid = woeid
+
+            if len(docs) == self.update_count:
+                logging.info("aliases counter @ %s" % counter)
+                counter += len(docs)
+                self._add(docs)
+                docs = []
 
         #
 
-        if len(new.keys()):
-            new = self._massage_aliases(new)
+        if len(aliases.keys()):
+            new = self._massage_aliases(last_woeid, aliases)
             docs.append(new)
 
         if len(docs):
@@ -265,37 +262,37 @@ class woedb:
 
         logging.info("updated aliases for %s docs" % counter)
 
-    def _massage_aliases(self, new):
+    def _massage_aliases(self, woeid, aliases):
 
-        old = self.get_by_woeid(new['woeid'])
+        loc = self.get_by_woeid(woeid)
     
-        if old:
+        if not loc:
+            loc['woeid'] = woeid
 
-            del(old['date_indexed'])
-            del(old['_version_'])
+            for k, v in aliases:
+                loc[k] = v
+
+        else:
+
+            del(loc['date_indexed'])
+            del(loc['_version_'])
 
             aliases = {}
 
-            for k, v in new.items():
+            # HOW: to account for aliases from earlier data releases?
 
-                if not k.startswith('alias'):
-                    continue
+            for k, v in aliases.items():
 
-                if old.get(k, False):
-                    
-                    aliases[k] = old[k]
-
-                    for a in new[k]:
-                        if not a in aliases[k]:
-                            aliases[k].append(a)
-
+                if not loc.get(k):
+                    loc[k] = v
                 else:
-                    aliases[k] = v
 
-            new = dict(old.items() + aliases.items())
+                    for name in v:
+                        if not v in loc[k]:
+                            loc[k].append(name)
 
-        new['provider'] = 'geoplanet %s' % self.version
-        return new
+        loc['provider'] = 'geoplanet %s' % self.version
+        return loc
 
     def parse_changes(self, fname):
 
