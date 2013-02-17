@@ -188,8 +188,11 @@ class woedb:
         # isn't because ... puppies? (20130217/straup)
 
         if not loc:
-            loc['woeid'] = woeid
-            loc['woeid_adjacent'] = adjacent
+
+            loc = {
+                'woeid': woeid,
+                'woeid_adjacent': adjacent
+                }
 
         else:
 
@@ -267,7 +270,10 @@ class woedb:
         loc = self.get_by_woeid(woeid)
     
         if not loc:
-            loc['woeid'] = woeid
+            
+            loc = {
+                'woeid' :  woeid
+                }
 
             for k, v in aliases:
                 loc[k] = v
@@ -371,7 +377,6 @@ class woedb:
         fh = self.zf.open(fname)
 
         # gggggrnnhhhnnnhnhn.... yes, really.
-	# I wonder if they're all like this.
 
         known_bad = ('7.4.0', '7.4.1')
 
