@@ -275,7 +275,7 @@ class woedb:
                 'woeid' :  woeid
                 }
 
-            for k, v in aliases:
+            for k, v in aliases.items():
                 loc[k] = v
 
         else:
