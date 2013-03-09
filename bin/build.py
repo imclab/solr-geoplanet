@@ -11,6 +11,7 @@ import re
 import os.path
 import logging
 import StringIO
+import sqlite3
 
 class woedb:
 
@@ -64,12 +65,12 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        self.parse_places(places)
+        # self.parse_places(places)
         self.parse_aliases(aliases)
-        self.parse_adjacencies(adjacencies)
+        # self.parse_adjacencies(adjacencies)
 
-        if changes in file_list:
-            self.parse_changes(changes)
+#        if changes in file_list:
+#            self.parse_changes(changes)
 
         logging.info("finished parsing %s" % path)
         
@@ -93,7 +94,16 @@ class woedb:
                 'iso': row['ISO'],
                 }
 
-            new = self._massage_place(new)
+            old = self.get_by_woeid(new['woeid'])
+
+            if old:
+
+                for prop in ('woeid_supersedes', 'woeid_superseded_by'):
+
+                    if old.get(prop, False):
+                        new[prop] = old[prop]
+
+            new['provider'] = 'geoplanet %s' % self.version
 
             docs.append(new)
 
@@ -113,138 +123,64 @@ class woedb:
         logging.info("places %s added %s docs" % (self.version, counter))
         return True
 
-    def _massage_place(self, new):
-
-        old = self.get_by_woeid(new['woeid'])
-
-        if old:
-
-            for prop in ('woeid_supersedes', 'woeid_superseded_by'):
-
-                if old.get(prop, False):
-                    new[prop] = old[prop]
-
-        new['provider'] = 'geoplanet %s' % self.version
-        return new
-
     def parse_adjacencies(self, fname):
 
         logging.debug("parse adjacencies %s" % fname)
 
+        dbfile = "adjacencies-%s" % self.version
+
+        setup = [
+            "CREATE TABLE geoplanet_adjacencies (woeid INTEGER, neighbour INTEGER)",
+            "CREATE INDEX adjacencies_by_woeid ON geoplanet_adjacencies (woeid)"
+            ]
+
+        con, cur = self.sqlite_db(dbfile, setup)
+
         reader = self.zf_reader(fname)
-        docs = []
 
-        last_woeid = None
-        adjacent = []
-
-        counter = 0
+        logging.info("sql-ized adjacencies start")
 
         for row in reader:
 
             woeid = int(row['Place_WOE_ID'])
             woeid_adjacent = int(row['Neighbour_WOE_ID'])
 
-            str_adjacent = ",".join(map(str, adjacent))
-            logging.debug("woeid: %s last: %s adjacent: %s" % (woeid, last_woeid, str_adjacent))
+            sql = "INSERT INTO geoplanet_adjacencies (woeid, neighbour) VALUES (?,?)"
+            cur.execute(sql, (woeid, woeid_adjacent))
 
-            if last_woeid and last_woeid != woeid:
+            con.commit()
 
-                new = self._massage_adjacent(last_woeid, adjacent)
-                docs.append(new)
+        logging.info("sql-ized adjacencies complete")
 
-                adjacent = []
+        #
 
-            last_woeid = woeid
-            adjacent.append(woeid_adjacent)
-
-            if len(docs) == self.update_count:
-                logging.info("adjacencies counter @ %s" % counter)
-                counter += len(docs)
-                self._add(docs)
-                docs = []
-
-        # clean up any stragglers
-
-        if len(adjacent):
-            new = self._massage_adjacent(last_woeid, adjacent)
-            docs.append(new)
-
-        if len(docs):
-            logging.info("adjacencies counter @ %s" % counter)
-            counter += len(docs)
-            self._add(docs)
-
-        logging.info("updated %s docs" % counter)
-
-    def _massage_adjacent(self, woeid, adjacent):
-
-        loc = self.get_by_woeid(woeid)
-
-        # TO DO: change the change for adjacent woeid
-        # to be a dynamic adjacent_PLACETYPE field ?
-        # do a lookup on woeid_adjacent (20130122/straup)
-            
-        # loc should always be defined but sometimes it
-        # isn't because ... puppies? (20130217/straup)
-
-        if not loc:
-
-            loc = {
-                'woeid': woeid,
-                'woeid_adjacent': adjacent
-                }
-
-        else:
-
-            del(loc['date_indexed'])
-            del(loc['_version_'])
-
-            already_adjacent = loc.get('woeid_adjacent', [])
-                    
-            for a in adjacent:
-                if not a in already_adjacent:
-                    already_adjacent.append(a)
-
-            loc['woeid_adjacent'] = already_adjacent
-
-        loc['provider'] = 'geoplanet %s' % self.version
-        return loc
-
-    def parse_aliases(self, fname):
-
-        logging.debug("parse aliases %s" % fname)
-
-        reader = self.zf_reader(fname)
         docs = []
-
-        last_woeid = None
-        aliases = {}
-
         counter = 0
 
-        for row in reader:
+        ids = []
 
-            woeid = int(row['WOE_ID'])
+        res = cur.execute("""SELECT DISTINCT(woeid) FROM geoplanet_adjacencies""")
 
-            alias_k = "alias_%s_%s" % (row['Language'], row['Name_Type'])
-            alias_v = row['Name']
+        for row in res:
+            woeid = row[0]
+            ids.append(woeid)
+        
+        for woeid in ids:
 
-            # logging.debug("woeid: %s last: %s row: %s" % (woeid, last_woeid, row))
-            logging.debug("woeid: %s last: %s aliases: %s" % (woeid, last_woeid, aliases))
+            sql = """SELECT * FROM geoplanet_adjacencies WHERE woeid=?"""
+            a_res = cur.execute(sql, (woeid,))
 
-            if last_woeid and last_woeid != woeid:
+            adjacent = []
 
-                new = self._massage_aliases(last_woeid, aliases)
-                docs.append(new)
+            for a_row in a_res:
+                woeid, neighbour = a_row
+                adjacent.append(neighbour)
 
-                aliases = {}
+            logging.debug("got %s neighbours for WOE ID %s" % (len(adjacent), woeid))
 
-            if aliases.get(alias_k):
-                aliases[ alias_k ].append(alias_v)
-            else:
-                aliases[ alias_k ] = [ alias_v ]
-
-            last_woeid = woeid
+            loc = self.get_by_woeid(woeid)
+            loc['woeid_adjacent'] = adjacent
+            docs.append(loc)
 
             if len(docs) == self.update_count:
                 logging.info("aliases counter @ %s" % counter)
@@ -252,11 +188,91 @@ class woedb:
                 self._add(docs)
                 docs = []
 
+        if len(docs):
+            logging.info("aliases counter @ %s" % counter)
+            counter += len(docs)
+            self._add(docs)
+
+        logging.info("finished importing adjacencies")
+        os.unlink(dbfile)
+
+    def parse_aliases(self, fname):
+
+        logging.debug("parse aliases %s" % fname)
+
+        reader = self.zf_reader(fname)
+
+        logging.info("sql-ized aliases start")
+
+        dbfile = "aliases-%s" % self.version
+
+        setup = [
+            "CREATE TABLE geoplanet_aliases (woeid INTEGER, name TEXT, type TEXT)",
+            "CREATE INDEX aliases_by_woeid ON geoplanet_aliases (woeid)"
+            ]
+
+        con, cur = self.sqlite_db(dbfile, setup)
+
+        for row in reader:
+
+            woeid = int(row['WOE_ID'])
+            name = row['Name']
+
+            type = "%s_%s" % (row['Language'], row['Name_Type'])
+
+            sql = "INSERT INTO geoplanet_aliases (woeid, name, type) VALUES (?,?,?)"
+            cur.execute(sql, (woeid, name, type))
+
+            con.commit()
+
+        logging.info("sql-ized aliases complete")
+
         #
 
-        if len(aliases.keys()):
-            new = self._massage_aliases(last_woeid, aliases)
-            docs.append(new)
+        docs = []
+        counter = 0
+
+        ids = []
+        res = cur.execute("""SELECT DISTINCT(woeid) FROM geoplanet_aliases""")
+
+        # ZOMGWTF... why do I need to do this????
+        # (20130309/straup)
+
+        for row in res:
+            woeid = row[0]
+            ids.append(woeid)
+
+        for woeid in ids:
+
+            print woeid
+
+            sql = """SELECT * FROM geoplanet_aliases WHERE woeid=?"""
+            a_res = cur.execute(sql, (woeid,))
+
+            aliases = {}
+
+            for a_row in a_res:
+
+                woeid, name, type = a_row
+                k = "alias_%s" % type
+
+                names = aliases.get(k, [])
+                names.append(name)
+
+                aliases[k] = names
+
+            loc = self.get_by_woeid(woeid)
+
+            for k, v in aliases.items():
+                loc[k] = v
+
+            docs.append(loc)
+
+            if len(docs) == self.update_count:
+                logging.info("aliases counter @ %s" % counter)
+                counter += len(docs)
+                self._add(docs)
+                docs = []
 
         if len(docs):
             logging.info("aliases counter @ %s" % counter)
@@ -264,46 +280,11 @@ class woedb:
             self._add(docs)
 
         logging.info("updated aliases for %s docs" % counter)
-
-    def _massage_aliases(self, woeid, aliases):
-
-        loc = self.get_by_woeid(woeid)
-    
-        if not loc:
-            
-            loc = {
-                'woeid' :  woeid
-                }
-
-            for k, v in aliases.items():
-                loc[k] = v
-
-        else:
-
-            del(loc['date_indexed'])
-            del(loc['_version_'])
-
-            aliases = {}
-
-            # HOW: to account for aliases from earlier data releases?
-
-            for k, v in aliases.items():
-
-                if not loc.get(k):
-                    loc[k] = v
-                else:
-
-                    for name in v:
-                        if not v in loc[k]:
-                            loc[k].append(name)
-
-        loc['provider'] = 'geoplanet %s' % self.version
-        return loc
+        os.unlink(dbfile)
 
     def parse_changes(self, fname):
 
-        logging.debug("parse aliases %s" % fname)
-        logging.warning("this has not been tested yet...")
+        logging.debug("parse changes %s" % fname)
 
         reader = self.zf_reader(fname)
 
@@ -314,13 +295,8 @@ class woedb:
             old_woeid = int(row['Woe_id'])
             new_woeid = int(row['Rep_id'])
 
-            print "old: %s new: %s" % (old_woeid, new_woeid)
-
             old = self.get_by_woeid(old_woeid)
             new = self.get_by_woeid(new_woeid)
-
-            print old
-            print new
 
             if old:
 
@@ -331,7 +307,6 @@ class woedb:
                 old['provider'] = 'geoplanet %s' % self.version
 
                 logging.debug("old: %s new: %s" % (old_woeid, new_woeid))
-
                 docs.append(old)
 
             else:
@@ -347,9 +322,7 @@ class woedb:
                 del(new['_version_'])
 
                 supersedes = new.get('woeid_supersedes', [])
-                print "%s supersedes: %s" % (new_woeid, supersedes)
-
-                # logging.debug("new: %s supercedes: %s" % (new_woeid, supersedes))
+                logging.debug("new: %s supercedes: %s" % (new_woeid, supersedes))
 
                 if new.get("woeid_supersede", False):
                     del(new["woeid_supersede"])
@@ -371,6 +344,23 @@ class woedb:
                 self._add(docs, False)
 
         self.solr.optimize()
+
+    def sqlite_db(self, dbfile, setup):
+
+        if os.path.exists(dbfile):
+            os.unlink(dbfile)
+
+        con = sqlite3.connect(dbfile)
+        cur = con.cursor()
+
+        cur.execute("""PRAGMA synchronous=0""")
+        cur.execute("""PRAGMA locking_mode=EXCLUSIVE""")
+        cur.execute("""PRAGMA journal_mode=DELETE""")
+
+        for cmd in setup:
+            cur.execute(cmd)
+
+        return con, cur
 
     def zf_reader(self, fname, delimiter='\t'):
 
