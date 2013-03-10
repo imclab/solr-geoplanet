@@ -65,12 +65,12 @@ class woedb:
             logging.error("Missing %s" % places)
             return False
 
-        # self.parse_places(places)
+        self.parse_places(places)
         self.parse_aliases(aliases)
-        # self.parse_adjacencies(adjacencies)
+        self.parse_adjacencies(adjacencies)
 
-#        if changes in file_list:
-#            self.parse_changes(changes)
+        if changes in file_list:
+            self.parse_changes(changes)
 
         logging.info("finished parsing %s" % path)
         
@@ -179,7 +179,18 @@ class woedb:
             logging.debug("got %s neighbours for WOE ID %s" % (len(adjacent), woeid))
 
             loc = self.get_by_woeid(woeid)
+
+            # Blurgh...
+
+            if not loc:
+
+                loc = {
+                    'woeid': woeid,
+                    'provider': 'geoplanet %s' % self.version
+                    }
+
             loc['woeid_adjacent'] = adjacent
+
             docs.append(loc)
 
             if len(docs) == self.update_count:
@@ -244,8 +255,6 @@ class woedb:
 
         for woeid in ids:
 
-            print woeid
-
             sql = """SELECT * FROM geoplanet_aliases WHERE woeid=?"""
             a_res = cur.execute(sql, (woeid,))
 
@@ -262,6 +271,15 @@ class woedb:
                 aliases[k] = names
 
             loc = self.get_by_woeid(woeid)
+
+            # Wot?!
+
+            if not loc:
+
+                loc = {
+                    'woeid': woeid,
+                    'provider': 'geoplanet %s' % self.version
+                    }
 
             for k, v in aliases.items():
                 loc[k] = v
