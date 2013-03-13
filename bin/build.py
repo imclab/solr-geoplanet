@@ -194,13 +194,13 @@ class woedb:
             docs.append(loc)
 
             if len(docs) == self.update_count:
-                logging.info("aliases counter @ %s" % counter)
+                logging.info("adjacencies counter @ %s" % counter)
                 counter += len(docs)
                 self._add(docs)
                 docs = []
 
         if len(docs):
-            logging.info("aliases counter @ %s" % counter)
+            logging.info("adjacencies counter @ %s" % counter)
             counter += len(docs)
             self._add(docs)
 
@@ -302,7 +302,7 @@ class woedb:
 
     def parse_changes(self, fname):
 
-        logging.debug("parse changes %s" % fname)
+        logging.info("parse changes %s" % fname)
 
         reader = self.zf_reader(fname)
 
@@ -310,8 +310,15 @@ class woedb:
 
             docs = []
 
-            old_woeid = int(row['Woe_id'])
-            new_woeid = int(row['Rep_id'])
+            # I know right? This is a problem in the 
+            # geoplanet_changes_7.8.1 file (20130313/straup)
+
+            try:
+                old_woeid = int(row['Woe_id'])
+                new_woeid = int(row['Rep_id'])
+            except Exception, e:
+                print row
+                continue
 
             old = self.get_by_woeid(old_woeid)
             new = self.get_by_woeid(new_woeid)
@@ -353,10 +360,6 @@ class woedb:
 
             else:
                 logging.warning("WTF... no record for new WOE ID (%s)" % new_woeid)
-
-            print "docs: %s" % len(docs)
-
-            print "---"
 
             if len(docs):
                 self._add(docs, False)
