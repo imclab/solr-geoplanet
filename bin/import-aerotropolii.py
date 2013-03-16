@@ -95,7 +95,9 @@ if __name__ == '__main__':
 
     import optparse
 
-    parser = optparse.OptionParser("""import-airports.py --options whereonearth-aerotropolis/reference/airports.csv""")
+    # As in: https://github.com/straup/whereonearth-aerotropolis
+
+    parser = optparse.OptionParser("""import-airports.py --options /path/to/whereonearth-aerotropolis""")
     parser.add_option("-s", "--solr", dest="solr", help="your solr endpoint; default is http://localhost:8983/solr/woedb", default='http://localhost:8983/solr/woedb')
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="enable chatty logging; default is false", default=False)
 
