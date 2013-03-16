@@ -51,6 +51,7 @@ def add_geometries(opts, doc):
     if rank:
         doc['scale_rank'] = int(rank)
 
+    doc['provider_geometry'] = 'natural earth 2.0'
     return doc
 
 def import_concordance(opts, aerotropolii):
@@ -67,10 +68,10 @@ def import_concordance(opts, aerotropolii):
 
         doc = {
             'woeid': row['aerotropolis_woe_id'],
-            'provider': row['derived_from'],
+            'provider_metadata': ['natural earth 2.0', 'woedb 2.0'],
             'name': row['aerotropolis_name'],
             'alias_ENG_V': row['airports'],
-            'placetype': 'Areotropolis'
+            'placetype': 'Aerotropolis'
             }
 
         doc = add_geometries(opts, doc)

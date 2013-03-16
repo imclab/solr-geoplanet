@@ -63,7 +63,11 @@
 
 	<!-- data source -->
 
+	<!-- deprecated -->
 	<field name="provider" type="provider" indexed="true" stored="true"  multiValued="false" required="false" />
+
+	<!-- the new new: provider_metadata,provider_geometry,etc. -->
+	<dynamicField name="provider_*" type="provider" indexed="true" stored="true"  multiValued="true" required="false" />
 
 	<!-- spatial stuff -->
 
