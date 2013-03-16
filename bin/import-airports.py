@@ -44,19 +44,12 @@ def import_concordance(opts, concord):
         if lat != '' and lon != '':
             loc['centroid'] = '%s,%s' % (lat, lon)
 
-        """
-        swlat = row['airport_sw_latitude']
-        swlon = row['airport_sw_longitude']
+        bbox = row['airport_woe_bbox']
+        bbox = bbox.split(',')
+        bbox = map(float, bbox)
 
-        if swlat != '' and swlon != '':
-            doc['sw_corner'] = '%s,%s' % (swlat, swlon)
-        """
-
-        nelat = row['airport_ne_latitude']
-        nelon = row['airport_ne_longitude']
-
-        if nelat != '' and nelon != '':
-            loc['ne_corner'] = '%s,%s' % (nelat, nelon)
+        loc['sw_corner'] = '%s,%s' % (bbox[0], bbox[1])
+        loc['ne_corner'] = '%s,%s' % (bbox[2], bbox[3])
 
         docs.append(loc)
 

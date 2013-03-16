@@ -67,9 +67,9 @@
 
 	<!-- spatial stuff -->
 
-	<field name="centroid" type="location" indexed="true" stored="false"/>
-	<field name="sw_corner" type="location" indexed="true" stored="false"/>
-	<field name="ne_corner" type="location" indexed="true" stored="false"/>
+	<field name="centroid" type="location" indexed="true" stored="true"/>
+	<field name="sw_corner" type="location" indexed="true" stored="true"/>
+	<field name="ne_corner" type="location" indexed="true" stored="true"/>
 
 	<dynamicField name="*_coordinate"  type="coord" indexed="true"  stored="false"/>
 
