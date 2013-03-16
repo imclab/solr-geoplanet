@@ -73,7 +73,11 @@
 
 	<dynamicField name="*_coordinate"  type="coord" indexed="true"  stored="false"/>
 
-        <field name="area" type="coord" indexed="true" stored="true" multiValued="false" required="false" />
+        <field name="area" type="area" indexed="true" stored="true" multiValued="false" required="false" />
+	<field name="geometry" type="geometry" indexed="false" stored="true" multiValued="false" required="false" />
+
+	<!-- scale_rank, scale_population, etc. -->
+	<dynamicField name="scale_*" type="scale" indexed="true" stored="true" multiValued="true" required="false" />
 
 	<!-- concordances! -->
 	<dynamicField name="concordance_*" type="string" indexed="true" stored="true" multiValued="true" required="false" />
@@ -87,6 +91,9 @@
         <fieldType name="location" class="solr.LatLonType" subFieldSuffix="_coordinate"/>
         <fieldType name="coord" class="solr.TrieDoubleField" precisionStep="0" omitNorms="true" positionIncrementGap="0" />
 
+        <fieldType name="area" class="solr.TrieDoubleField" precisionStep="0" omitNorms="true" positionIncrementGap="0" />
+
+        <fieldType name="scale" class="solr.TrieLongField" precisionStep="8" omitNorms="true" positionIncrementGap="0" />
         <fieldType name="woeid" class="solr.TrieLongField" precisionStep="8" omitNorms="true" positionIncrementGap="0" />
 
         <fieldType name="placetype" class="solr.TextField" sortMissingLast="true" omitNorms="true">
@@ -129,6 +136,9 @@
       			<filter class="solr.LowerCaseFilterFactory" />
 		</analyzer>
 	</fieldType>
+
+    <!-- just a blob to store a serialized GeoJSON Feature geometry hash in -->
+    <fieldType name="geometry" class="solr.StrField" sortMissingLast="true" />
 
     <fieldType name="string" class="solr.StrField" sortMissingLast="true" />
     <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true"/>
