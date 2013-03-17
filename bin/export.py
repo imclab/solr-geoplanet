@@ -190,4 +190,3 @@ if __name__ == '__main__':
 
     for place, count in placetypes.items():
         export_place(opts, place, count)
-        break
