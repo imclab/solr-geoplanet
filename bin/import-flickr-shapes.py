@@ -12,16 +12,20 @@ import shapely.geometry
 
 def add_geometries(doc, feature):
 
-    print feature
-
     geom = feature['geometry']
     geom = shapely.geometry.asShape(geom)
 
     centroid = geom.centroid
+
     lat = centroid.y
     lon = centroid.x
 
-    doc['centroid'] = "%s,%s" % (lat,lon)
+    # What really? Something triggers these errors:
+    # Invalid latitude: latitudes are range -90 to 90: provided lat: [-267.734515144]
+    # Invalid longitude: longitudes are range -180 to 180: provided lon: [-255.248708048]
+
+    if lat >= -90 and lat <= 90 and lon >= -180 and lon <= 180:
+        doc['centroid'] = "%s,%s" % (lat,lon)
 
     bbox = feature.get('bbox', None)
 
@@ -39,8 +43,10 @@ def add_geometries(doc, feature):
 
     doc['provider_geometry'] = 'flickr shapefiles 2.0.1'
 
-    if doc.get('__version__', False):
-        del(doc['__version__'])
+    try:
+        del(doc['_version_'])
+    except Exception, e:
+        print "%s : %s" % (doc['woeid'], e)
 
     return doc
 
@@ -69,7 +75,7 @@ def import_places(opts, place):
         doc = rsp.docs[0]
         doc = add_geometries(doc, f)
 
-        continue
+        # continue
 
         docs.append(doc)
 
