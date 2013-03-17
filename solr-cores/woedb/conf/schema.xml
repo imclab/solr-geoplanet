@@ -78,7 +78,8 @@
 	<dynamicField name="*_coordinate"  type="coord" indexed="true"  stored="false"/>
 
         <field name="area" type="area" indexed="true" stored="true" multiValued="false" required="false" />
-	<field name="geometry" type="geometry" indexed="false" stored="true" multiValued="false" required="false" />
+
+	<dynamicField name="geometry_*" type="geometry" indexed="false" stored="true" multiValued="false" required="false" />
 
 	<!-- scale_rank, scale_population, etc. -->
 	<dynamicField name="scale_*" type="scale" indexed="true" stored="true" multiValued="true" required="false" />

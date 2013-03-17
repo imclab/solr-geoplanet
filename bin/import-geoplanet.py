@@ -103,7 +103,7 @@ class woedb:
                     if old.get(prop, False):
                         new[prop] = old[prop]
 
-            new['provider'] = 'geoplanet %s' % self.version
+            new['provider_metadata'] = [ 'geoplanet %s' % self.version ]
 
             docs.append(new)
 
@@ -186,7 +186,7 @@ class woedb:
 
                 loc = {
                     'woeid': woeid,
-                    'provider': 'geoplanet %s' % self.version
+                    'provider_metdata': [ 'geoplanet %s' % self.version ]
                     }
 
             loc['woeid_adjacent'] = adjacent
@@ -278,7 +278,7 @@ class woedb:
 
                 loc = {
                     'woeid': woeid,
-                    'provider': 'geoplanet %s' % self.version
+                    'provider_metadata': [ 'geoplanet %s' % self.version ]
                     }
 
             for k, v in aliases.items():
@@ -329,7 +329,7 @@ class woedb:
                 del(old['_version_'])
 
                 old['woeid_superseded_by'] = new_woeid
-                old['provider'] = 'geoplanet %s' % self.version
+                old['provider_metadata'] = [ 'geoplanet %s' % self.version ]
 
                 logging.debug("old: %s new: %s" % (old_woeid, new_woeid))
                 docs.append(old)
@@ -339,7 +339,7 @@ class woedb:
                 old = {}
                 old['woeid'] = old_woeid
                 old['woeid_superseded_by'] = new_woeid
-                old['provider'] = 'geoplanet %s' % self.version
+                old['provider_metadata'] = [ 'geoplanet %s' % self.version ]
                 docs.append(old)
 
             if new:

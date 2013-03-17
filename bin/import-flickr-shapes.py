@@ -36,12 +36,11 @@ def add_geometries(doc, feature):
     doc['sw_corner'] = "%s,%s" % (bbox[1], bbox[0])
     doc['ne_corner'] = "%s,%s" % (bbox[3], bbox[2])
 
-    # these really need to be truncated to 6 decimal points...
-    # doc['geometry'] = json.dumps(feature['geometry'])
-
-    props = feature['properties']
+    doc['geometry_default'] = utils.geometry2carbonite(feature['geometry'])
 
     doc['provider_geometry'] = 'flickr shapefiles 2.0.1'
+
+    # props = feature['properties']
 
     try:
         del(doc['_version_'])

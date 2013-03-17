@@ -1,22 +1,37 @@
 import json
 import re
+import StringIO
+
+def geometry2carbonite(geom):
+
+    io = StringIO.StringIO()
+    write_json(geom, io)
+
+    io.seek(0)
+    return io.read()
 
 def write_json(data, out, indent=2): 
 
-    # This no longer does what it's supposed because
-    # some random Python reason. Please for the bug
-    # fixes... (20130309/straup)
+    # From TileStache's vectiles GeoJSON encoder thingy
+    # (20130317/straup)
 
-    encoded = json.JSONEncoder(indent=indent)
-    encoded = encoded.iterencode(data)
+    float_pat = re.compile(r'^-?\d+\.\d+(e-?\d+)?$')
+    charfloat_pat = re.compile(r'^[\[,\,]-?\d+\.\d+(e-?\d+)?$')
 
-    float_pat = re.compile(r'^-?\d+\.\d+$')
-
-    for atom in encoded:
-        if float_pat.match(atom):
-            out.write('%.6f' % float(atom))
+    encoder = json.JSONEncoder(separators=(',', ':'))
+    encoded = encoder.iterencode(data)
+    
+    for token in encoded:
+        if charfloat_pat.match(token):
+            # in python 2.7, we see a character followed by a float literal
+            out.write(token[0] + '%.6f' % float(token[1:]))
+        
+        elif float_pat.match(token):
+            # in python 2.6, we see a simple float literal
+            out.write('%.6f' % float(token))
+        
         else:
-            out.write(atom)
+            out.write(token)
 
 def woeid2path(id):
 

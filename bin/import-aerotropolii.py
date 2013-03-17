@@ -37,8 +37,7 @@ def add_geometries(opts, doc):
     doc['sw_corner'] = "%s,%s" % (bbox[1], bbox[0])
     doc['ne_corner'] = "%s,%s" % (bbox[3], bbox[2])
 
-    # these really need to be truncated to 6 decimal points...
-    # doc['geometry'] = json.dumps(feature['geometry'])
+    doc['geometry_default'] = utils.geometry2carbonite(feature['geometry'])
 
     props = feature['properties']
 
