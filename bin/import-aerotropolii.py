@@ -54,7 +54,68 @@ def add_geometries(opts, doc):
     doc['provider_geometry'] = 'natural earth 2.0'
     return doc
 
-def import_concordance(opts, aerotropolii):
+def import_airports(opts,  aerotropolii):
+
+    solr = pysolr.Solr(opts.solr)
+    docs = []
+
+    concord = os.path.join(aerotropolii, 'reference', 'airports.csv')
+
+    fh = open(concord, 'r')
+    reader = csv.DictReader(fh)
+
+    for row in reader:
+
+        woeid = row['airport_woe_id']
+
+        query = "woeid:%s" % woeid
+        rsp = solr.search(q=query)
+
+        if rsp.hits == 0:
+            continue
+
+        loc = rsp.docs[0]
+
+        iata_code = row['airport_iata_code']
+        icao_code = row['airport_icao_code']
+
+        print "%s: %s" % (woeid, iata_code)
+
+        if iata_code != '':
+            loc['concordance_iata'] = iata_code
+
+        if icao_code != '':
+            loc['concordance_icao'] = icao_code
+
+        lat = row['airport_woe_latitude']
+        lon = row['airport_woe_longitude']
+
+        if lat != '' and lon != '':
+            loc['centroid'] = '%s,%s' % (lat, lon)
+
+        bbox = row['airport_woe_bbox']
+        bbox = bbox.split(',')
+        bbox = map(float, bbox)
+
+        loc['sw_corner'] = '%s,%s' % (bbox[0], bbox[1])
+        loc['ne_corner'] = '%s,%s' % (bbox[2], bbox[3])
+
+        docs.append(loc)
+
+        if len(docs) == 1000:
+            logging.info("finish adding to solr...")
+            solr.add(docs)
+            docs = []
+
+    if len(docs):
+        logging.info("finish adding to solr...")
+        solr.add(docs)
+        docs = []
+
+    solr.optimize()
+    logging.info("done")
+
+def import_aerotropolii(opts, aerotropolii):
 
     solr = pysolr.Solr(opts.solr)
     docs = []
@@ -113,6 +174,8 @@ if __name__ == '__main__':
         sys.exit()
 
     aerotropolii = args[0]
+    
+    import_aerotropolii(opts, aerotropolii)
+    import_airports(opts, aerotropolii)
 
-    import_concordance(opts, aerotropolii)
     sys.exit()
