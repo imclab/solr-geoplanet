@@ -12,21 +12,31 @@ import logging
 
 import utils
 
-def get_placetypes(opts) :
+def get_placetypes(opts):
 
     solr = pysolr.Solr(opts.solr)
 
+    q = '*:*'
+
+    if opts.placetype:
+        q = 'placetype:%s' % opts.placetype
+        
     args = {
-        'q': '*:*',
+        'q': q,
         'fq': '-woeid_superseded_by:*',
         'facet': 'on',
+        'facet.mincount': 1,
         'facet.field': 'placetype',
         'rows': 0,
         'facet.limit': -1
         }
 
+    print args
+
     rsp = solr.search(**args)
     facets = rsp.facets['facet_fields']['placetype']
+
+    print facets
 
     count = len(facets)
     placetypes = {}
@@ -155,6 +165,8 @@ def export_place(opts, place, count):
           
         start += rows
     
+    # Write points (by country)
+
     for iso, features in point_features.items():
 
         geojson = {
@@ -162,13 +174,35 @@ def export_place(opts, place, count):
             'features': features
             }
 
-        fname = "%s-%s.json" % (place, iso)
+        fname = "%s-%s-centroid.json" % (place, iso)
         path = os.path.join(opts.outdir, fname)
 
         fh = open(path, 'w')
 
         logging.info("write %s" % fname)
         utils.write_json(geojson, fh)
+
+    # Write all points
+
+    all_points = []
+
+    for ignore, features in point_features.items():
+        all_points.extend(features)
+        
+    geojson = {
+        'type': 'FeatureCollection',
+        'features': all_points
+        }
+
+    fname = "%s-centroid.json" % (place)
+    path = os.path.join(opts.outdir, fname)
+
+    fh = open(path, 'w')
+
+    logging.info("write %s" % fname)
+    utils.write_json(geojson, fh)
+
+    # Write polys by country
 
     for iso, features in poly_features.items():
 
@@ -185,6 +219,26 @@ def export_place(opts, place, count):
         logging.info("write %s" % fname)
         utils.write_json(geojson, fh)
 
+    # Write all polys
+
+    all_polys = []
+
+    for ignore, features in poly_features.items():
+        all_polys.extend(features)
+        
+    geojson = {
+        'type': 'FeatureCollection',
+        'features': all_polys
+        }
+
+    fname = "%s-poly.json" % (place)
+    path = os.path.join(opts.outdir, fname)
+
+    fh = open(path, 'w')
+
+    logging.info("write %s" % fname)
+    utils.write_json(geojson, fh)
+
 if __name__ == '__main__':
 
     import optparse
@@ -193,6 +247,7 @@ if __name__ == '__main__':
 
     parser.add_option("-o", "--outdir", dest="outdir", help="...", default=os.getcwd())
     parser.add_option("-s", "--solr", dest="solr", help="your solr endpoint; default is http://localhost:8983/solr/woedb", default='http://localhost:8983/solr/woedb')
+    parser.add_option("-p", "--placetype", dest="placetype", help="...", default=None)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="enable chatty logging; default is false", default=False)
 
     (opts, args) = parser.parse_args()
