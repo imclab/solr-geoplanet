@@ -4,6 +4,7 @@ import sys
 import os
 import os.path
 
+import StringIO
 import json
 import csv
 import pysolr
@@ -39,11 +40,17 @@ def export_place(opts, place, count):
 
     logging.info("export %s (%s records)" % (place, count))
 
+    dump = "%s.txt" % place
+    path_dump = os.path.join(opts.outdir, dump)
+
+    fh = open(path_dump, 'w')
+
     missing = "%s-nogeo.csv" % place
     path_missing = os.path.join(opts.outdir, missing)
 
     writer = csv.writer(open(path_missing, 'w'))
     writer.writerow(('woeid', 'name', 'iso'))
+
 
     point_features = {}
     poly_features = {}
@@ -67,9 +74,17 @@ def export_place(opts, place, count):
 
         for doc in rsp.docs:
 
+            io = StringIO.StringIO()
+            utils.write_json(doc, io)
+
+            io.seek(0)
+            fh.write(io.read() + "\n")
+
             woeid = doc['woeid']
+            parent = doc.get('woeid_parent', -1)
+
             name = doc['name'].encode('utf8')
-            iso = doc['iso']
+            iso = doc.get('iso', 'ZZ')	# mainly aerotrpolii - needs to be fixed (20130317/straup)
 
             centroid = doc.get('centroid', None)
 
@@ -79,7 +94,8 @@ def export_place(opts, place, count):
 
             props = {
                 'name': name,
-                'woeid': woeid
+                'woeid': woeid,
+                'parent': parent,
                 }
 
             lat,lon = map(float, centroid.split(','))
