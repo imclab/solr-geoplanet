@@ -31,12 +31,8 @@ def get_placetypes(opts):
         'facet.limit': -1
         }
 
-    print args
-
     rsp = solr.search(**args)
     facets = rsp.facets['facet_fields']['placetype']
-
-    print facets
 
     count = len(facets)
     placetypes = {}
