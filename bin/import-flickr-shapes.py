@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     # As in: http://www.flickr.com/services/shapefiles/2.0.1/
 
-    parser = optparse.OptionParser("""import-airports.py --options whereonearth-aerotropolis/reference/airports.csv""")
+    parser = optparse.OptionParser("""import-flickr-shapes.py --options /path/to/flickr_shapes_*.json""")
     parser.add_option("-s", "--solr", dest="solr", help="your solr endpoint; default is http://localhost:8983/solr/woedb", default='http://localhost:8983/solr/woedb')
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="enable chatty logging; default is false", default=False)
 
