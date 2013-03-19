@@ -104,18 +104,15 @@ def export_place(opts, place, count):
                 'parent': parent,
                 }
 
-            # TO DO: compatible props for https://github.com/mattb/flickrgeocoder-java
+            # Make compatible props for https://github.com/mattb/flickrgeocoder-java
             # at least until I can patch it to generate GeoJSON... (20130319/straup)
 
-            """
-            "place_type" : "neighbourhood",
-            "place_id" : "14GBJSKbAplS6LgiYg",
-            "midpoint_lng" : -122.41356999999999,
-            "label" : "Tenderloin, San Francisco, CA, US, United States",
-            "woe_id" : 23512024,
-            "place_ty_1" : 22,
-            "midpoint_lat" : 37.783901
-            """
+            if opts.compat:
+                props['place_type'] = place
+                props['woe_id'] = woeid
+                props['label'] = name
+                # place_id
+                # place_ty_1 (place_type_id)
 
             lat,lon = map(float, centroid.split(','))
 
@@ -257,6 +254,7 @@ if __name__ == '__main__':
     parser.add_option("-o", "--outdir", dest="outdir", help="...", default=os.getcwd())
     parser.add_option("-s", "--solr", dest="solr", help="your solr endpoint; default is http://localhost:8983/solr/woedb", default='http://localhost:8983/solr/woedb')
     parser.add_option("-p", "--placetype", dest="placetype", help="...", default=None)
+    parser.add_option("-c", "--compat", dest="compat", action="store_true", help="...default is false", default=False)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="enable chatty logging; default is false", default=False)
 
     (opts, args) = parser.parse_args()
