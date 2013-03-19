@@ -104,6 +104,19 @@ def export_place(opts, place, count):
                 'parent': parent,
                 }
 
+            # TO DO: compatible props for https://github.com/mattb/flickrgeocoder-java
+            # at least until I can patch it to generate GeoJSON... (20130319/straup)
+
+            """
+            "place_type" : "neighbourhood",
+            "place_id" : "14GBJSKbAplS6LgiYg",
+            "midpoint_lng" : -122.41356999999999,
+            "label" : "Tenderloin, San Francisco, CA, US, United States",
+            "woe_id" : 23512024,
+            "place_ty_1" : 22,
+            "midpoint_lat" : 37.783901
+            """
+
             lat,lon = map(float, centroid.split(','))
 
             point = {
