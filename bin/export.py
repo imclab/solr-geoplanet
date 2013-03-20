@@ -44,15 +44,20 @@ def get_placetypes(opts):
 
 def export_place(opts, place, count):
 
+    exportdir = os.path.join(opts.outdir, place)
+
+    if not os.path.exists(exportdir):
+        os.makedirs(exportdir)
+        
     logging.info("export %s (%s records)" % (place, count))
 
     dump = "%s.txt" % place
-    path_dump = os.path.join(opts.outdir, dump)
+    path_dump = os.path.join(exportdir, dump)
 
     fh = open(path_dump, 'w')
 
     missing = "%s-nogeo.csv" % place
-    path_missing = os.path.join(opts.outdir, missing)
+    path_missing = os.path.join(exportdir, missing)
 
     writer = csv.writer(open(path_missing, 'w'))
     writer.writerow(('woeid', 'name', 'iso'))
@@ -181,7 +186,7 @@ def export_place(opts, place, count):
             }
 
         fname = "%s-%s-centroid.json" % (place, iso)
-        path = os.path.join(opts.outdir, fname)
+        path = os.path.join(exportdir, fname)
 
         fh = open(path, 'w')
 
@@ -201,7 +206,7 @@ def export_place(opts, place, count):
         }
 
     fname = "%s-centroid.json" % (place)
-    path = os.path.join(opts.outdir, fname)
+    path = os.path.join(exportdir, fname)
 
     fh = open(path, 'w')
 
@@ -218,7 +223,7 @@ def export_place(opts, place, count):
             }
 
         fname = "%s-%s-poly.json" % (place, iso)
-        path = os.path.join(opts.outdir, fname)
+        path = os.path.join(exportdir, fname)
 
         fh = open(path, 'w')
 
@@ -238,7 +243,7 @@ def export_place(opts, place, count):
         }
 
     fname = "%s-poly.json" % (place)
-    path = os.path.join(opts.outdir, fname)
+    path = os.path.join(exportdir, fname)
 
     fh = open(path, 'w')
 
