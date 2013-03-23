@@ -6,6 +6,7 @@ import json
 import os
 import os.path
 import logging
+import shapely.geometry
 
 if __name__ == '__main__':
 
@@ -38,6 +39,13 @@ if __name__ == '__main__':
     data = json.load(fh)
 
     for f in data['features']:
+
+        if not f.get('bbox', False):
+
+            geom = f['geometry']
+            geom = shapely.geometry.asShape(geom)
+
+            f['bbox'] = geom.bounds
 
         geojson = {
             'type': 'FeatureCollection',
