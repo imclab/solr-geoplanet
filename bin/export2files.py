@@ -26,47 +26,58 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.INFO)
 
-    placetype = opts.placetype
-    fname = "%s-poly.json" % placetype
-
-    path = os.path.join(opts.export, placetype, fname)
-
-    if not os.path.exists(path):
-        logging.error("%s is not a file!" % path)
+    if not opts.placetype:
+        logging.error("you forgot to specify any places to export")
         sys.exit()
 
-    fh = open(path, 'r')
-    data = json.load(fh)
+    placetypes = opts.placetype.split(',')
+    logging.debug("export %s" % placetypes)
 
-    for f in data['features']:
+    for placetype in placetypes:
 
-        if not f.get('bbox', False):
+        placetype = placetype.strip()
 
-            geom = f['geometry']
-            geom = shapely.geometry.asShape(geom)
+        fname = "%s-poly.json" % placetype
 
-            f['bbox'] = geom.bounds
+        path = os.path.join(opts.export, placetype, fname)
 
-        geojson = {
-            'type': 'FeatureCollection',
-            'features': [ f ]
-        }
+        if not os.path.exists(path):
+            logging.error("%s is not a file!" % path)
+            continue
 
-        woeid = f['id']
+        fh = open(path, 'r')
+        data = json.load(fh)
 
-        tree = utils.woeid2path(woeid)
-        fname = "%s.json" % woeid
+        for f in data['features']:
 
-        root = os.path.join(opts.outdir, tree)
-        path = os.path.join(root, fname)
+            if not f.get('bbox', False):
 
-        if not os.path.exists(root):
-            logging.info("create %s" % root)
-            os.makedirs(root)
+                geom = f['geometry']
+                geom = shapely.geometry.asShape(geom)
 
-        logging.info("write %s" % path)
+                f['bbox'] = geom.bounds
 
-        out = open(path, 'w')
-        utils.write_json(geojson, out)
+            geojson = {
+                'type': 'FeatureCollection',
+                'features': [ f ]
+            }
 
+            woeid = f['id']
+
+            tree = utils.woeid2path(woeid)
+            fname = "%s.json" % woeid
+
+            root = os.path.join(opts.outdir, tree)
+            path = os.path.join(root, fname)
+
+            if not os.path.exists(root):
+                logging.info("create %s" % root)
+                os.makedirs(root)
+
+            logging.info("write %s" % path)
+        
+            out = open(path, 'w')
+            utils.write_json(geojson, out)
+
+    logging.debug("done")
     sys.exit()
