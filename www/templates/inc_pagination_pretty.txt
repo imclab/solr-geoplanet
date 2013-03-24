@@ -1,0 +1,26 @@
+
+<div class="pagination pagination-centered">
+	<ul>
+
+{if $pagination.has_prev}
+		<li><a href="{$pagination.prev_url}">Prev</a></li>
+{else}
+		<li class="disabled"><a href="#">Prev</a></li>
+{/if}
+{foreach from=$pagination.page_links item='row'}
+{if $row.is_current}
+		<li class="active"><a href="{$row.url}">{$row.page}</a></li>
+{elseif $row.is_dots}
+		<li class="disabled"><a href="#">&hellip;</a></li>
+{else}
+		<li><a href="{$row.url}">{$row.page}</a></li>
+{/if}
+{/foreach}
+{if $pagination.has_next}
+		<li><a href="{$pagination.next_url}">Next</a></li>
+{else}
+		<li class="disabled"><a href="#">Next</a></li>
+{/if}
+	</ul>
+</div>
+	
