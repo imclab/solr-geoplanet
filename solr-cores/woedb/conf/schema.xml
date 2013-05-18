@@ -133,7 +133,7 @@
 		<analyzer>
 			<tokenizer class="solr.StandardTokenizerFactory" />
 			<!-- is this really necessary w/ StandardTokenFactory? -->
-      			<filter class="solr.WordDelimiterFilterFactory" generatenumberparts="0" generatewordparts="0" catenateall="1" preserveOriginal="1" />
+      			<filter class="solr.WordDelimiterFilterFactory" generateNumberParts="0" generateWordParts="0" catenateAll="1" preserveOriginal="1" />
 			<!-- huh?
 			woedb: org.apache.solr.common.SolrException:org.apache.solr.common.SolrException: Plugin init failure for [schema.xml] fieldType "placename": Plugin init failure for [schema.xml] analyzer/filter: Error loading class 'solr.ISOLatin1AccentFilterFactory' 
 			-->
